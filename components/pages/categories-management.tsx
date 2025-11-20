@@ -204,7 +204,7 @@ export default function CategoriesManagement() {
   const rejectedSuggestions = suggestions.filter(c => c.status === 'rejected')
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Popular Search Categories</h1>
         <Button onClick={() => setShowAddModal(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
@@ -258,8 +258,8 @@ export default function CategoriesManagement() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {approvedSuggestions.map(suggestion => (
-              <div key={suggestion.id} className="p-4 border border-green-200 bg-green-50 rounded-lg">
+            {approvedSuggestions.map((suggestion, index) => (
+              <div key={suggestion.id || `approved-${index}`} className="p-4 border border-green-200 bg-green-50 rounded-lg">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-semibold">{suggestion.name}</h3>
                   {getStatusBadge(suggestion.status)}
@@ -296,8 +296,8 @@ export default function CategoriesManagement() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {pendingSuggestions.map(suggestion => (
-                <div key={suggestion.id} className="p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
+              {pendingSuggestions.map((suggestion, index) => (
+                <div key={suggestion.id || `pending-${index}`} className="p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold">{suggestion.name}</h3>
                     {getStatusBadge(suggestion.status)}
@@ -333,8 +333,8 @@ export default function CategoriesManagement() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {rejectedSuggestions.map(suggestion => (
-                <div key={suggestion.id} className="p-4 border border-red-200 bg-red-50 rounded-lg">
+              {rejectedSuggestions.map((suggestion, index) => (
+                <div key={suggestion.id || `rejected-${index}`} className="p-4 border border-red-200 bg-red-50 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold">{suggestion.name}</h3>
                     {getStatusBadge(suggestion.status)}

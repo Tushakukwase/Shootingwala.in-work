@@ -1,64 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server'
+import clientPromise from '@/lib/mongodb'
 
 export async function GET(request: NextRequest) {
   try {
-    // Get pending requests from unified API
-    const requestsResponse = await fetch(`${request.nextUrl.origin}/api/requests?status=pending`)
-    const requestsData = await requestsResponse.json()
+    const client = await clientPromise
+    const db = client.db('photobook')
     
-
-    
-    // Get photographer galleries and stories separately
-    const galleriesResponse = await fetch(`${request.nextUrl.origin}/api/photographer-galleries`)
-    const galleriesData = await galleriesResponse.json()
-    
-    const storiesResponse = await fetch(`${request.nextUrl.origin}/api/photographer-stories`)
-    const storiesData = await storiesResponse.json()
-    
-    // Get pending photographer approvals
-    const approvalsResponse = await fetch(`${request.nextUrl.origin}/api/photographer-approvals`)
-    const approvalsData = await approvalsResponse.json()
-    
+    // Initialize counts
     let pendingCategories = 0
     let pendingCities = 0
     let pendingPhotographerGalleries = 0
     let pendingPhotographerStories = 0
     let pendingPhotographerApprovals = 0
+    let pendingMessages = 0
     
-    if (requestsData.success) {
-      const pendingRequests = requestsData.data
+    try {
+      // Get pending counts directly from database
+      const [
+        pendingRequests,
+        pendingGalleries,
+        pendingStories,
+        pendingPhotographers,
+        unreadMessages
+      ] = await Promise.all([
+        db.collection('requests').find({ status: 'pending' }).toArray().catch(() => []),
+        db.collection('photographer_galleries').find({ 
+          status: 'pending',
+          photographerId: { $exists: true, $ne: 'admin' }
+        }).toArray().catch(() => []),
+        db.collection('photographer_stories').find({ 
+          status: 'pending',
+          photographerId: { $exists: true, $ne: 'admin' }
+        }).toArray().catch(() => []),
+        db.collection('studios').find({ 
+          status: 'pending'
+        }).toArray().catch(() => []),
+        db.collection('conversations').find({ 
+          unreadCount: { $gt: 0 }
+        }).toArray().catch(() => [])
+      ])
+      
+      // Count by type
       pendingCategories = pendingRequests.filter((req: any) => req.type === 'category').length
       pendingCities = pendingRequests.filter((req: any) => req.type === 'city').length
+      pendingPhotographerGalleries = pendingGalleries.length
+      pendingPhotographerStories = pendingStories.length
+      pendingPhotographerApprovals = pendingPhotographers.length
+      pendingMessages = unreadMessages.reduce((total: number, conv: any) => total + (conv.unreadCount || 0), 0)
+    } catch (collectionError) {
+      console.error('Error querying collections:', collectionError)
+      // Continue with default counts of 0
     }
     
-
-    
-    if (galleriesData.success && galleriesData.galleries) {
-      // Only count photographer galleries that have requested homepage (pending status)
-      pendingPhotographerGalleries = galleriesData.galleries.filter((g: any) => 
-        g.status === 'pending' && 
-        g.photographerId && 
-        g.photographerId !== 'admin' && 
-        g.is_notified !== false
-      ).length
-    }
-    
-    if (storiesData.success && storiesData.stories) {
-      // Only count photographer stories that have requested homepage (pending status)
-      pendingPhotographerStories = storiesData.stories.filter((s: any) => 
-        s.status === 'pending' && 
-        s.photographerId && 
-        s.photographerId !== 'admin' && 
-        s.is_notified !== false
-      ).length
-    }
-    
-    if (approvalsData.success && approvalsData.photographers) {
-      // Count pending photographer approvals
-      pendingPhotographerApprovals = approvalsData.photographers.filter((p: any) => 
-        p.status === 'pending'
-      ).length
-    }
+    const total = pendingCategories + pendingCities + pendingPhotographerGalleries + pendingPhotographerStories + pendingPhotographerApprovals + pendingMessages
     
     return NextResponse.json({
       success: true,
@@ -68,14 +62,24 @@ export async function GET(request: NextRequest) {
         photographerGalleries: pendingPhotographerGalleries,
         photographerStories: pendingPhotographerStories,
         photographerApprovals: pendingPhotographerApprovals,
-        total: pendingCategories + pendingCities + pendingPhotographerGalleries + pendingPhotographerStories + pendingPhotographerApprovals
+        messages: pendingMessages,
+        total: total
       }
     })
   } catch (error) {
     console.error('Error fetching pending counts:', error)
     return NextResponse.json({
       success: false,
-      error: 'Failed to fetch pending counts'
+      error: 'Failed to fetch pending counts',
+      data: {
+        categories: 0,
+        cities: 0,
+        photographerGalleries: 0,
+        photographerStories: 0,
+        photographerApprovals: 0,
+        messages: 0,
+        total: 0
+      }
     }, { status: 500 })
   }
 }

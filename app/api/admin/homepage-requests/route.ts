@@ -82,6 +82,27 @@ export async function POST(req: NextRequest) {
       notification.message = notification.message + ' - APPROVED by Admin'
       notification.timestamp = 'Just now'
       
+      // Create notification for photographer
+      const photographerId = notification.userId
+      if (photographerId) {
+        const newNotification = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          type: type === 'gallery_homepage_request' ? 'gallery_approved' : 'story_approved',
+          title: type === 'gallery_homepage_request' ? 'Gallery Approved for Homepage!' : 'Story Approved for Homepage!',
+          message: type === 'gallery_homepage_request' 
+            ? 'Your gallery has been approved and will be featured on the homepage.' 
+            : 'Your story has been approved and will be featured on the homepage.',
+          userId: photographerId,
+          relatedId: relatedId,
+          actionRequired: false,
+          read: false,
+          createdAt: new Date().toISOString(),
+          timestamp: 'Just now'
+        }
+        
+        notifications.push(newNotification)
+      }
+      
     } else if (action === 'reject') {
       // Update content status to rejected
       if (type === 'gallery_homepage_request') {
@@ -112,6 +133,27 @@ export async function POST(req: NextRequest) {
       notification.actionRequired = false
       notification.message = notification.message + ' - REJECTED by Admin'
       notification.timestamp = 'Just now'
+      
+      // Create notification for photographer
+      const photographerId = notification.userId
+      if (photographerId) {
+        const newNotification = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          type: type === 'gallery_homepage_request' ? 'gallery_rejected' : 'story_rejected',
+          title: type === 'gallery_homepage_request' ? 'Gallery Request Rejected' : 'Story Request Rejected',
+          message: type === 'gallery_homepage_request' 
+            ? 'Your gallery request for homepage has been rejected. Please review and resubmit.' 
+            : 'Your story request for homepage has been rejected. Please review and resubmit.',
+          userId: photographerId,
+          relatedId: relatedId,
+          actionRequired: false,
+          read: false,
+          createdAt: new Date().toISOString(),
+          timestamp: 'Just now'
+        }
+        
+        notifications.push(newNotification)
+      }
     }
     
     MockStorage.saveNotifications(notifications)

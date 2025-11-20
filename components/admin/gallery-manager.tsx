@@ -33,12 +33,14 @@ export default function GalleryManager() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [selectedGallery, setSelectedGallery] = useState<Gallery | null>(null)
   const [editingGallery, setEditingGallery] = useState<Gallery | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'categories' | 'detail'>('list')
+  const [viewMode, setViewMode] = useState<'list' | 'categories' | 'detail'>('categories') // Default to categories view
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [selectedGalleries, setSelectedGalleries] = useState<Gallery[]>([])
-  const [showGrouped, setShowGrouped] = useState(false)
+  const [showGrouped, setShowGrouped] = useState(true) // Default to grouped view
   const [newGallery, setNewGallery] = useState({
     name: '',
     description: '',
@@ -168,7 +170,7 @@ export default function GalleryManager() {
         body: JSON.stringify({
           id: editingGallery.id,
           name: editingGallery.name,
-          description: editingGallery.description || '',
+          description: (editingGallery as any).description || '',
           images: editingGallery.images
         })
       })
@@ -446,6 +448,7 @@ export default function GalleryManager() {
         categoryName={selectedCategory}
         galleries={selectedGalleries}
         onBack={() => setViewMode('categories')}
+        onRefresh={loadGalleries}
       />
     )
   }
@@ -458,9 +461,6 @@ export default function GalleryManager() {
           <CardTitle className="flex items-center gap-2">
             <Image className="w-5 h-5 text-blue-600" />
             Gallery Management
-            {pendingCount > 0 && (
-              <Badge variant="destructive">{pendingCount} Pending</Badge>
-            )}
           </CardTitle>
           <div className="flex items-center gap-2">
             <div className="flex items-center bg-muted p-1 rounded-lg">
@@ -474,7 +474,7 @@ export default function GalleryManager() {
                 List
               </Button>
               <Button
-                variant={viewMode === 'categories' ? 'default' : 'ghost'}
+                variant={(viewMode as string) === 'categories' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setViewMode('categories')}
                 className="px-3 py-1"
@@ -490,15 +490,33 @@ export default function GalleryManager() {
           </div>
         </div>
         
+        {/* Count Boxes */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+          <div className="bg-white rounded-lg p-4 text-center shadow-sm border">
+            <div className="text-3xl font-bold text-black mb-1">{totalCount}</div>
+            <div className="text-sm text-gray-600">Total Suggestions</div>
+          </div>
+          <div className="bg-white rounded-lg p-4 text-center shadow-sm border">
+            <div className="text-3xl font-bold text-orange-500 mb-1">{pendingCount}</div>
+            <div className="text-sm text-gray-600">Pending Review</div>
+          </div>
+          <div className="bg-white rounded-lg p-4 text-center shadow-sm border">
+            <div className="text-3xl font-bold text-green-600 mb-1">{approvedCount}</div>
+            <div className="text-sm text-gray-600">Approved</div>
+          </div>
+          <div className="bg-white rounded-lg p-4 text-center shadow-sm border">
+            <div className="text-3xl font-bold text-red-600 mb-1">{visibleGalleries.filter(g => g.status === 'rejected').length}</div>
+            <div className="text-sm text-gray-600">Rejected</div>
+          </div>
+        </div>
+        
         {/* Filter Tabs */}
-        <div className="flex flex-wrap gap-1 bg-muted p-1 rounded-lg">
+        <div className="flex flex-wrap gap-1 bg-muted p-1 rounded-lg mt-4">
           {[
             { key: 'all', label: `All (${totalCount})` },
             { key: 'pending', label: `Pending (${pendingCount})` },
             { key: 'approved', label: `Approved (${approvedCount})` },
-            { key: 'rejected', label: `Rejected (${visibleGalleries.filter(g => g.status === 'rejected').length})` },
-            { key: 'admin', label: `Admin (${visibleGalleries.filter(g => !g.photographerId || g.photographerId === 'admin').length})` },
-            { key: 'photographer', label: `Photographer (${visibleGalleries.filter(g => g.status !== 'draft' && g.photographerId && g.photographerId !== 'admin').length})` }
+            { key: 'rejected', label: `Rejected (${visibleGalleries.filter(g => g.status === 'rejected').length})` }
           ].map(tab => (
             <button
               key={tab.key}
@@ -530,14 +548,19 @@ export default function GalleryManager() {
                 ? "No galleries are pending approval."
                 : filter === 'approved'
                 ? "No galleries have been approved yet."
+                : filter === 'rejected'
+                ? "No galleries have been rejected."
                 : "No galleries have been created yet."
               }
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {filteredGalleries.map((gallery) => (
-              <div key={gallery.id} className="border border-gray-200 rounded-lg p-4 bg-white">
+              <div 
+                key={gallery.id} 
+                className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex flex-col h-full"
+              >
                 <div className="flex flex-col h-full">
                   {/* Gallery Preview */}
                   <div className="mb-3">
@@ -550,43 +573,40 @@ export default function GalleryManager() {
                     )}
                   </div>
                   
-                  <div className="flex-1">
-                    <div className="flex items-center gap-1 mb-2 flex-wrap">
-                      <h4 className="font-semibold text-sm truncate">{gallery.name}</h4>
+                  <div className="flex-1 space-y-2">
+                    <h4 className="font-semibold text-sm truncate">{gallery.name}</h4>
+                    
+                    <div className="flex justify-center">
                       {getStatusBadge(gallery.status)}
                     </div>
                     
-                    <div className="mb-2">
-                      {gallery.showOnHome ? (
-                        <Badge className="bg-green-100 text-green-800 text-xs">
-                          <Eye className="w-3 h-3 mr-1" />
-                          On Homepage
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-gray-100 text-gray-600 text-xs">
-                          Not on Homepage
-                        </Badge>
-                      )}
-                    </div>
-                      
-                    <div className="text-xs text-gray-600 mb-2">
-                      <div className="flex items-center gap-1 mb-1">
-                        <User className="w-3 h-3" />
-                        <span className="truncate">{gallery.photographerName || 'Admin'}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span>{gallery.images.length} images</span>
-                      </div>
+                    <div className="text-xs text-gray-500 text-center">
+                      {new Date(gallery.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                   
-                  <div className="flex gap-1 flex-wrap mt-auto">
+                  {/* Action Buttons */}
+                  <div className="flex gap-1 flex-wrap mt-4">
+                    {/* View Details Button */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs px-2 py-1 flex-1"
+                      onClick={() => {
+                        setSelectedGallery(gallery)
+                        setShowDetailModal(true)
+                      }}
+                      title="View Details"
+                    >
+                      <Eye className="w-3 h-3" />
+                    </Button>
+
                     {/* Approval/Rejection Buttons */}
                     {gallery.status === 'pending' && (
                       <>
                         <Button
                           size="sm"
-                          className="bg-green-600 hover:bg-green-700 text-xs px-2 py-1"
+                          className="bg-green-600 hover:bg-green-700 text-xs px-2 py-1 flex-1"
                           onClick={() => handleApprove(gallery.id)}
                           disabled={actionLoading === gallery.id}
                           title="Approve Gallery"
@@ -600,7 +620,7 @@ export default function GalleryManager() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          className="text-xs px-2 py-1"
+                          className="text-xs px-2 py-1 flex-1"
                           onClick={() => handleReject(gallery.id)}
                           disabled={actionLoading === gallery.id}
                           title="Reject Gallery"
@@ -615,7 +635,7 @@ export default function GalleryManager() {
                       <Button
                         size="sm"
                         variant="destructive"
-                        className="text-xs px-2 py-1"
+                        className="text-xs px-2 py-1 flex-1"
                         onClick={() => handleReject(gallery.id)}
                         disabled={actionLoading === gallery.id}
                         title="Reject Gallery"
@@ -627,7 +647,7 @@ export default function GalleryManager() {
                     {gallery.status === 'rejected' && (
                       <Button
                         size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-xs px-2 py-1"
+                        className="bg-green-600 hover:bg-green-700 text-xs px-2 py-1 flex-1"
                         onClick={() => handleApprove(gallery.id)}
                         disabled={actionLoading === gallery.id}
                         title="Approve Gallery"
@@ -640,7 +660,7 @@ export default function GalleryManager() {
                     {gallery.status === 'approved' && (
                       <Button
                         size="sm"
-                        className={gallery.showOnHome ? "bg-blue-600 hover:bg-blue-700 text-xs px-2 py-1" : "bg-gray-600 hover:bg-gray-700 text-xs px-2 py-1"}
+                        className={gallery.showOnHome ? "bg-blue-600 hover:bg-blue-700 text-xs px-2 py-1 flex-1" : "bg-gray-600 hover:bg-gray-700 text-xs px-2 py-1 flex-1"}
                         onClick={() => handleToggleHomepage(gallery.id, gallery.showOnHome)}
                         disabled={actionLoading === gallery.id}
                         title={gallery.showOnHome ? "Remove from Homepage" : "Show on Homepage"}
@@ -653,7 +673,7 @@ export default function GalleryManager() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="text-xs px-2 py-1"
+                      className="text-xs px-2 py-1 flex-1"
                       onClick={() => {
                         setEditingGallery(gallery)
                         setShowEditModal(true)
@@ -668,7 +688,7 @@ export default function GalleryManager() {
                     <Button
                       size="sm"
                       variant="destructive"
-                      className="text-xs px-2 py-1"
+                      className="text-xs px-2 py-1 flex-1"
                       onClick={() => handleDelete(gallery.id)}
                       disabled={actionLoading === gallery.id}
                       title="Delete Gallery"
@@ -835,8 +855,8 @@ export default function GalleryManager() {
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea
-                value={editingGallery.description || ''}
-                onChange={(e) => setEditingGallery(prev => prev ? { ...prev, description: e.target.value } : null)}
+                value={(editingGallery as any).description || ''}
+                onChange={(e) => setEditingGallery(prev => prev ? { ...prev, description: e.target.value } as any : null)}
                 placeholder="Enter gallery description"
                 rows={3}
               />
@@ -863,6 +883,196 @@ export default function GalleryManager() {
               </Button>
               <Button variant="outline" onClick={() => setShowEditModal(false)} className="flex-1">
                 Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )}
+
+    {/* Gallery Detail Modal */}
+    {showDetailModal && selectedGallery && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <Card className="w-full max-w-3xl max-h-[85vh] overflow-y-auto">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Eye className="w-5 h-5" />
+                Gallery Details - Review Request
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setShowDetailModal(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Photographer/Studio Information */}
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+              <h3 className="font-semibold text-blue-900 mb-2 flex items-center gap-2 text-sm">
+                <User className="w-4 h-4" />
+                Photographer/Studio Information
+              </h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="font-medium text-blue-800">Studio Name:</span>
+                  <p className="text-blue-700">{selectedGallery.photographerName || 'Unknown Studio'}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-blue-800">Photographer ID:</span>
+                  <p className="text-blue-700 font-mono text-xs">{selectedGallery.photographerId}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-blue-800">Request Date:</span>
+                  <p className="text-blue-700">{selectedGallery.request_date ? new Date(selectedGallery.request_date).toLocaleDateString() : new Date(selectedGallery.createdAt).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-blue-800">Current Status:</span>
+                  <div className="mt-1">{getStatusBadge(selectedGallery.status)}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Gallery Content Preview */}
+            <div className="bg-gray-50 p-3 rounded-lg border">
+              <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2 text-sm">
+                <Image className="w-4 h-4" />
+                Gallery Content Preview
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="font-medium text-gray-700 text-sm">Gallery Name:</span>
+                    <p className="text-gray-900 font-semibold">{selectedGallery.name}</p>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700 text-sm">Total Images:</span>
+                    <p className="text-gray-900">{selectedGallery.images.length} images</p>
+                  </div>
+                </div>
+
+                {/* Image Gallery Preview */}
+                {selectedGallery.images.length > 0 && (
+                  <div>
+                    <span className="font-medium text-gray-700 block mb-2 text-sm">Image Preview:</span>
+                    <div className="grid grid-cols-3 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto">
+                      {selectedGallery.images.slice(0, 8).map((image, index) => (
+                        <div key={index} className="relative aspect-square">
+                          <img 
+                            src={image} 
+                            alt={`Gallery image ${index + 1}`}
+                            className="w-full h-full object-cover rounded border"
+                          />
+                        </div>
+                      ))}
+                      {selectedGallery.images.length > 8 && (
+                        <div className="aspect-square bg-gray-200 rounded border flex items-center justify-center">
+                          <span className="text-gray-600 text-xs">+{selectedGallery.images.length - 8} more</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Approval History */}
+            {(selectedGallery.approved_by || selectedGallery.status !== 'pending') && (
+              <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                <h3 className="font-semibold text-yellow-900 mb-2 flex items-center gap-2 text-sm">
+                  <Calendar className="w-4 h-4" />
+                  Approval History
+                </h3>
+                <div className="text-sm space-y-2">
+                  {selectedGallery.approved_by && (
+                    <div>
+                      <span className="font-medium text-yellow-800">Reviewed by:</span>
+                      <p className="text-yellow-700">{selectedGallery.approved_by_name || selectedGallery.approved_by}</p>
+                    </div>
+                  )}
+                  {selectedGallery.approved_at && (
+                    <div>
+                      <span className="font-medium text-yellow-800">Review Date:</span>
+                      <p className="text-yellow-700">{new Date(selectedGallery.approved_at).toLocaleDateString()}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-3 border-t">
+              {selectedGallery.status === 'pending' && (
+                <>
+                  <Button
+                    className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                    onClick={() => {
+                      handleApprove(selectedGallery.id)
+                      setShowDetailModal(false)
+                    }}
+                    disabled={actionLoading === selectedGallery.id}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Approve Gallery
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => {
+                      handleReject(selectedGallery.id)
+                      setShowDetailModal(false)
+                    }}
+                    disabled={actionLoading === selectedGallery.id}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Reject Gallery
+                  </Button>
+                </>
+              )}
+              
+              {selectedGallery.status === 'approved' && (
+                <>
+                  <Button
+                    className={selectedGallery.showOnHome ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-600 hover:bg-gray-700"}
+                    onClick={() => {
+                      handleToggleHomepage(selectedGallery.id, selectedGallery.showOnHome)
+                      setShowDetailModal(false)
+                    }}
+                    disabled={actionLoading === selectedGallery.id}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    {selectedGallery.showOnHome ? 'Remove from Homepage' : 'Show on Homepage'}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      handleReject(selectedGallery.id)
+                      setShowDetailModal(false)
+                    }}
+                    disabled={actionLoading === selectedGallery.id}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Reject Gallery
+                  </Button>
+                </>
+              )}
+              
+              {selectedGallery.status === 'rejected' && (
+                <Button
+                  className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                  onClick={() => {
+                    handleApprove(selectedGallery.id)
+                    setShowDetailModal(false)
+                  }}
+                  disabled={actionLoading === selectedGallery.id}
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Approve Gallery
+                </Button>
+              )}
+              
+              <Button variant="outline" onClick={() => setShowDetailModal(false)}>
+                Close
               </Button>
             </div>
           </CardContent>

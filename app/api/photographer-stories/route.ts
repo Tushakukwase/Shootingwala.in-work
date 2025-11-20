@@ -9,9 +9,10 @@ export async function GET(request: NextRequest) {
     
     const client = await clientPromise;
     const db = client.db('photobook');
-    const stories = db.collection('photographer_stories');
+    const stories = db.collection('stories'); // Use the same stories collection
     
-    let query: any = {}
+    // Query for stories created by photographers
+    let query: any = { created_by: 'photographer' }
     
     // Filter by photographer if specified
     if (photographerId) {
@@ -25,11 +26,11 @@ export async function GET(request: NextRequest) {
       id: story._id.toString(),
       title: story.title,
       content: story.content,
-      coverImage: story.coverImage || '',
+      coverImage: story.imageUrl || story.coverImage || '',
       location: story.location || '',
       date: story.date || '',
       photographerId: story.photographerId || 'unknown',
-      photographerName: story.photographerName || 'Photographer',
+      photographerName: story.photographerName || story.photographer || 'Photographer',
       status: story.status || 'draft',
       showOnHome: story.showOnHome || false,
       createdAt: story.createdAt,
@@ -62,22 +63,23 @@ export async function POST(req: NextRequest) {
     
     const client = await clientPromise;
     const db = client.db('photobook');
-    const stories = db.collection('photographer_stories');
+    const stories = db.collection('stories'); // Use the same stories collection
     
     const isAdmin = photographerId === 'admin'
     
     const newStory = {
       title,
       content,
-      coverImage: coverImage || '',
-      location: location || '',
+      imageUrl: coverImage || '', // Use imageUrl field for consistency
       date: date || new Date().toISOString().split('T')[0],
+      location: location || '',
       photographerId: isAdmin ? null : photographerId,
       photographerName: isAdmin ? null : photographerName,
+      photographer: isAdmin ? null : photographerName, // Keep both for backward compatibility
       category: 'Wedding',
       tags: ['Wedding'],
       content_type: 'story',
-      created_by: isAdmin ? 'admin' : 'photographer',
+      created_by: isAdmin ? 'admin' : 'photographer', // Distinguish creator type
       created_by_name: isAdmin ? 'Admin' : photographerName,
       approved_by: isAdmin ? 'admin' : null,
       approved_by_name: isAdmin ? 'Admin' : null,
@@ -98,7 +100,7 @@ export async function POST(req: NextRequest) {
         id: result.insertedId.toString(),
         title: newStory.title,
         content: newStory.content,
-        coverImage: newStory.coverImage,
+        coverImage: newStory.imageUrl,
         location: newStory.location,
         date: newStory.date,
         photographerId: newStory.photographerId,
@@ -130,7 +132,7 @@ export async function PUT(req: NextRequest) {
     
     const client = await clientPromise;
     const db = client.db('photobook');
-    const stories = db.collection('photographer_stories');
+    const stories = db.collection('stories'); // Use the same stories collection
     
     const updateData: any = {
       updatedAt: new Date()
@@ -139,7 +141,7 @@ export async function PUT(req: NextRequest) {
     // Update fields
     if (title) updateData.title = title;
     if (content) updateData.content = content;
-    if (coverImage) updateData.coverImage = coverImage;
+    if (coverImage) updateData.imageUrl = coverImage; // Use imageUrl for consistency
     if (location) updateData.location = location;
     if (date) updateData.date = date;
     
@@ -184,25 +186,33 @@ export async function PUT(req: NextRequest) {
     
     const updatedStory = await stories.findOne({ _id: new ObjectId(id) });
     
+    // Add null check for updatedStory
+    if (!updatedStory) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Failed to retrieve updated story' 
+      }, { status: 500 });
+    }
+    
     return NextResponse.json({ 
       success: true,
       story: {
         id: updatedStory._id.toString(),
         title: updatedStory.title,
         content: updatedStory.content,
-        coverImage: updatedStory.coverImage,
-        location: updatedStory.location,
-        date: updatedStory.date,
-        photographerId: updatedStory.photographerId,
-        status: updatedStory.status,
-        showOnHome: updatedStory.showOnHome,
+        coverImage: updatedStory.imageUrl || updatedStory.coverImage || '',
+        location: updatedStory.location || '',
+        date: updatedStory.date || '',
+        photographerId: updatedStory.photographerId || '',
+        status: updatedStory.status || 'draft',
+        showOnHome: updatedStory.showOnHome || false,
         createdAt: updatedStory.createdAt,
         approvedAt: updatedStory.approved_at
       }
     });
     
   } catch (error) {
-    console.error('Error updating photographer story:', error);
+    console.error('Error updating story:', error);
     return NextResponse.json({ 
       success: false, 
       error: 'Failed to update story' 
@@ -224,7 +234,7 @@ export async function DELETE(req: NextRequest) {
     
     const client = await clientPromise;
     const db = client.db('photobook');
-    const stories = db.collection('photographer_stories');
+    const stories = db.collection('stories'); // Use the same stories collection
     
     const result = await stories.deleteOne({ _id: new ObjectId(id) });
     
@@ -241,7 +251,7 @@ export async function DELETE(req: NextRequest) {
     });
     
   } catch (error) {
-    console.error('Error deleting photographer story:', error);
+    console.error('Error deleting story:', error);
     return NextResponse.json({ 
       success: false, 
       error: 'Failed to delete story' 

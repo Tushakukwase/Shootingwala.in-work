@@ -389,145 +389,99 @@ export default function CategoriesManager() {
                 <p className="text-gray-400">Add your first category to get started</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7 gap-4">
                 {filteredCategories.map((category) => {
                   const isEditing = editId === category.id
                   return (
-                    <Card
+                    <div
                       key={category.id}
-                      className="group hover:shadow-xl transition-all duration-300 transform hover:scale-105 border-0 bg-gradient-to-br from-white to-gray-50"
+                      className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-200 transform hover:scale-[1.02] border border-gray-100 p-4 flex flex-col"
                     >
-                      <CardContent className="p-4 relative">
-                        {category.selected && (
-                          <span className="absolute top-2 right-2 z-10">
-                            <CheckCircle className="w-6 h-6 text-green-500" />
-                          </span>
-                        )}
-                        {isEditing ? (
-                          <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-                            <div className="flex flex-col gap-4">
-                              <Input
-                                type="text"
-                                value={editName}
-                                onChange={e => setEditName(e.target.value)}
-                                className="text-base text-gray-900"
-                                placeholder="Edit category name"
-                              />
-                              <div className="flex items-center gap-2">
-                                <input
-                                  id={`edit-file-${category.id}`}
-                                  ref={editFileInputRef}
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={handleEditFileSelect}
-                                  className="hidden"
-                                />
-                                <label htmlFor={`edit-file-${category.id}`} className="inline-flex items-center justify-center px-4 py-2 bg-gray-100 border border-gray-300 rounded cursor-pointer hover:bg-gray-200 transition">
-                                  <Upload className="w-4 h-4 mr-2" />
-                                  Change Image
-                                </label>
-                              </div>
-                              {editImage && (
-                                <NextImage
-                                  src={editImage}
-                                  alt="Preview"
-                                  width={64}
-                                  height={64}
-                                  className="object-cover rounded border mx-auto"
-                                />
-                              )}
-                              <div className="flex gap-2">
-                                <Button onClick={saveEdit} className="bg-green-600 text-white">Save</Button>
-                                <Button onClick={cancelEdit} variant="outline">Cancel</Button>
-                              </div>
+                      {isEditing ? (
+                        // Edit Form
+                        <div className="space-y-3">
+                          <Input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                          <div className="relative">
+                            <input
+                              ref={editFileInputRef}
+                              type="file"
+                              accept="image/*"
+                              onChange={handleEditFileSelect}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <div className="border border-dashed border-gray-300 rounded p-2 text-center text-xs">
+                              {editImage ? "Image Selected" : "Change Image"}
                             </div>
                           </div>
-                        ) : (
-                          <>
-                            <div className="flex items-center space-x-4">
-                              <div className="relative">
-                                <div className="w-16 h-16 rounded-xl overflow-hidden bg-gradient-to-br from-green-100 to-blue-100 flex items-center justify-center">
-                                  <NextImage
-                                    src={category.image || "/placeholder.svg"}
-                                    alt={category.name}
-                                    width={64}
-                                    height={64}
-                                    className="object-cover"
-                                  />
-                                </div>
-                                {category.isPopular && (
-                                  <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs">
-                                    Hot
-                                  </Badge>
-                                )}
-                              </div>
-
-                              <div className="flex-1 min-w-0">
-                                <h3 className="font-semibold text-gray-900 truncate">
-                                  {category.name}
-                                </h3>
-                                <p className="text-sm text-gray-500">{category.searchCount || 0} searches</p>
-                                <div className="flex items-center gap-2 mt-2">
-                                  <Badge
-                                    variant="outline"
-                                    className={`text-xs cursor-pointer ${
-                                      category.selected
-                                        ? "border-green-200 text-green-700 bg-green-50"
-                                        : "border-gray-200 text-gray-600 bg-gray-50"
-                                    }`}
-                                    onClick={() => toggleCategorySelection(category.id)}
-                                  >
-                                    {category.selected ? "Selected" : "Select"}
-                                  </Badge>
-                                  <Badge
-                                    variant="outline"
-                                    className={`text-xs ${
-                                      category.isPopular
-                                        ? "border-orange-200 text-orange-700 bg-orange-50"
-                                        : "border-gray-200 text-gray-600 bg-gray-50"
-                                    }`}
-                                  >
-                                    {category.isPopular ? "Popular" : "Standard"}
-                                  </Badge>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className={`text-xs px-2 py-1 ${
-                                    category.show_on_home 
-                                      ? 'bg-green-600 hover:bg-green-700 text-white border-green-600' 
-                                      : 'text-green-600 border-green-200 hover:bg-green-50 bg-transparent'
-                                  }`}
-                                  onClick={() => toggleShowOnHome(category.id)}
-                                  title={category.show_on_home ? "Remove from Homepage" : "Show on Homepage"}
-                                >
-                                  {category.show_on_home ? "On Home" : "Add Home"}
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-blue-600 border-blue-200 hover:bg-blue-50 bg-transparent"
-                                  onClick={() => startEdit(category)}
-                                >
-                                  <Edit3 className="w-3 h-3" />
-                                </Button>
-                                <Button
-                                  onClick={() => deleteCategory(category.id)}
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-red-600 border-red-200 hover:bg-red-50 bg-transparent"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </Button>
-                              </div>
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              onClick={saveEdit}
+                              className="h-8 text-xs flex-1"
+                            >
+                              <CheckCircle className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={cancelEdit}
+                              className="h-8 text-xs flex-1"
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        // Display Mode
+                        <>
+                          <div className="relative rounded-lg overflow-hidden mb-3">
+                            <NextImage
+                              src={category.image}
+                              alt={category.name}
+                              width={100}
+                              height={100}
+                              className="w-full h-24 object-cover"
+                            />
+                            {category.show_on_home && (
+                              <Badge className="absolute top-2 right-2 bg-blue-500 text-white text-xs">
+                                Home
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          <h3 className="font-semibold text-sm truncate text-center mb-3">{category.name}</h3>
+                          
+                          <div className="flex items-center justify-between mt-auto">
+                            <Badge variant="secondary" className="text-xs">
+                              {category.searchCount || 0} searches
+                            </Badge>
+                            <div className="flex gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => startEdit(category)}
+                                className="h-7 w-7 p-0"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => deleteCategory(category.id)}
+                                className="h-7 w-7 p-0 text-red-600"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
                             </div>
-                          </>
-                        )}
-                      </CardContent>
-                    </Card>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   )
                 })}
               </div>

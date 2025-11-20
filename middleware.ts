@@ -9,7 +9,8 @@ export function middleware(request: NextRequest) {
     '/admin',
     '/admin-dashboard',
     '/studio-dashboard',
-    '/dashboard'
+    '/dashboard',
+    '/user/'
   ]
 
   // Check if the current path is protected
@@ -29,8 +30,11 @@ export function middleware(request: NextRequest) {
         loginUrl = new URL('/studio-auth', request.url)
       } else if (pathname.startsWith('/admin')) {
         loginUrl = new URL('/studio-auth', request.url) // Use studio-auth for admin too
+      } else if (pathname.startsWith('/dashboard') || pathname.startsWith('/user/')) {
+        loginUrl = new URL('/login', request.url) // User login page
       } else {
-        loginUrl = new URL('/studio-auth', request.url) // Default to studio-auth
+        // Default to studio-auth for other protected routes
+        loginUrl = new URL('/studio-auth', request.url)
       }
       loginUrl.searchParams.set('redirect', pathname)
       return NextResponse.redirect(loginUrl)
@@ -49,8 +53,9 @@ export function middleware(request: NextRequest) {
           adminEmail: adminEmail
         })
         
-        // Check if user has admin role AND is the authorized admin email
-        if (userData.role !== 'admin' && userData.userType !== 'admin') {
+        // Check if user has admin role OR is the authorized admin email
+        const isAdmin = userData.role === 'admin' || userData.userType === 'admin'
+        if (!isAdmin) {
           console.log('Access denied: User does not have admin role')
           return NextResponse.redirect(new URL('/studio-dashboard', request.url))
         }
@@ -79,6 +84,7 @@ export const config = {
   matcher: [
     '/admin/:path*',
     '/studio-dashboard/:path*',
-    '/dashboard/:path*'
+    '/dashboard/:path*',
+    '/user/:path*'
   ]
 }

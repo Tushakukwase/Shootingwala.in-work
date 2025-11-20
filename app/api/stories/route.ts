@@ -8,6 +8,7 @@ export async function GET() {
     const db = client.db('photobook');
     const stories = db.collection('stories');
     
+    // Fetch all stories (both admin and photographer)
     const allStories = await stories.find({}).sort({ createdAt: -1 }).toArray();
     
     return NextResponse.json({ 
@@ -25,7 +26,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { title, content, imageUrl, date, location, photographer, category, tags, status = 'approved', published = true } = await req.json();
+    const { title, content, imageUrl, date, location, photographer, category, tags, status = 'approved', published = true, created_by = 'admin', photographerId, photographerName, showOnHome = true } = await req.json();
     
     if (!title || !content) {
       return NextResponse.json({ 
@@ -48,8 +49,11 @@ export async function POST(req: NextRequest) {
       category: category || 'Wedding',
       tags: tags || ["Wedding"],
       status,
-      showOnHome: false, // Default to not showing on homepage
+      showOnHome, // Use the provided value or default to true
       published,
+      created_by, // 'admin' or 'photographer'
+      photographerId: photographerId || null, // For photographer stories
+      photographerName: photographerName || null, // For photographer stories
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -103,6 +107,14 @@ export async function PUT(req: NextRequest) {
     }
     
     const updatedStory = await stories.findOne({ _id: new ObjectId(id) });
+    
+    // Add null check for updatedStory
+    if (!updatedStory) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Failed to retrieve updated story' 
+      }, { status: 500 });
+    }
     
     return NextResponse.json({ 
       success: true,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import NextImage from "next/image"
 import Link from "next/link"
 import { Search, Calendar, MapPin, User, Heart, BookOpen } from "lucide-react"
+import ClientCache from "@/lib/cache-utils"
 
 interface Story {
   _id: string
@@ -24,8 +25,38 @@ interface Story {
 export default function StoriesPage() {
   const [stories, setStories] = useState<Story[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
+  
+  // Scroll position preservation
+  const scrollPositions = useRef<Record<string, number>>({
+    window: 0
+  });
+
+  // Save scroll positions before component unmounts
+  useEffect(() => {
+    const saveScrollPositions = () => {
+      scrollPositions.current = {
+        window: window.scrollY
+      };
+    };
+
+    // Save positions when navigating away
+    window.addEventListener('beforeunload', saveScrollPositions);
+    
+    return () => {
+      window.removeEventListener('beforeunload', saveScrollPositions);
+    };
+  }, []);
+
+  // Restore scroll positions after component mounts
+  useEffect(() => {
+    // Restore scroll positions
+    if (scrollPositions.current.window > 0) {
+      window.scrollTo(0, scrollPositions.current.window);
+    }
+  }, []);
 
   useEffect(() => {
     fetchStories()
@@ -33,13 +64,27 @@ export default function StoriesPage() {
 
   const fetchStories = async () => {
     try {
+      // Check cache first
+      const cacheKey = 'stories'
+      const cachedData = ClientCache.get(cacheKey)
+      if (cachedData) {
+        setStories(cachedData)
+        setLoading(false)
+        return
+      }
+      
       const response = await fetch('/api/stories')
       const data = await response.json()
       if (data.success) {
         setStories(data.stories)
+        // Cache the data for 5 minutes
+        ClientCache.set(cacheKey, data.stories, 5 * 60 * 1000)
+      } else {
+        setError(data.error || 'Failed to load stories')
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch stories:', error)
+      setError(error.message || 'Failed to connect to the database. Please try again later.')
     } finally {
       setLoading(false)
     }
@@ -64,6 +109,23 @@ export default function StoriesPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto"></div>
           <p className="text-gray-600">Loading beautiful stories...</p>
         </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 flex items-center justify-center">
+        <Card className="max-w-md w-full mx-4">
+          <CardContent className="p-8 text-center">
+            <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Stories Unavailable</h2>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }

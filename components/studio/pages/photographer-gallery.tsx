@@ -251,7 +251,7 @@ export default function PhotographerGallery() {
   const homepageCategories = categories.filter(c => c.showOnHome)
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">My Gallery</h1>
         <Button onClick={() => setShowAddModal(true)} className="bg-primary text-primary-foreground">
@@ -306,14 +306,14 @@ export default function PhotographerGallery() {
                     <div key={category.id} className="border border-gray-200 bg-white rounded-lg p-4 shadow-sm">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="font-semibold">{category.name}</h3>
-                        {category.status === 'draft' && (
-                          <Badge className="bg-gray-100 text-gray-800">
-                            Draft
-                          </Badge>
-                        )}
                         {category.status === 'pending' && (
                           <Badge className="bg-yellow-100 text-yellow-800">
                             Pending Approval
+                          </Badge>
+                        )}
+                        {category.status === 'approved' && !category.showOnHome && (
+                          <Badge className="bg-green-100 text-green-800">
+                            Approved
                           </Badge>
                         )}
                         {category.status === 'approved' && category.showOnHome && (
@@ -348,11 +348,7 @@ export default function PhotographerGallery() {
                           <Edit className="w-3 h-3 mr-1" />Edit
                         </Button>
                         
-                        {category.status === 'draft' ? (
-                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => requestHomepageDisplay(category.id)}>
-                            Request Homepage Feature
-                          </Button>
-                        ) : category.status === 'pending' ? (
+                        {category.status === 'pending' ? (
                           <Button size="sm" variant="outline" disabled className="bg-yellow-100 text-yellow-800">
                             Request Pending...
                           </Button>

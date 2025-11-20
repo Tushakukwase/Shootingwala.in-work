@@ -12,10 +12,11 @@ import OTPInput from "./otp-input"
 interface UserFormProps {
   isLogin: boolean
   setIsLogin: (value: boolean) => void
-  onSwitchToStudio: () => void
+  onSwitchToStudio?: () => void
+  onSuccess?: () => void
 }
 
-export default function UserForm({ isLogin, setIsLogin, onSwitchToStudio }: UserFormProps) {
+export default function UserForm({ isLogin, setIsLogin, onSwitchToStudio, onSuccess }: UserFormProps) {
   const router = useRouter()
   const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
@@ -28,6 +29,7 @@ export default function UserForm({ isLogin, setIsLogin, onSwitchToStudio }: User
     fullName: "",
     email: "",
     password: "",
+    confirmPassword: "",
   })
 
   const validateForm = () => {
@@ -47,6 +49,12 @@ export default function UserForm({ isLogin, setIsLogin, onSwitchToStudio }: User
       newErrors.password = "Password is required"
     } else if (!useOTP && formData.password.length < 6) {
       newErrors.password = "Password must be at least 6 characters"
+    }
+
+    if (!isLogin && !useOTP && !formData.confirmPassword) {
+      newErrors.confirmPassword = "Please confirm your password"
+    } else if (!isLogin && !useOTP && formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match"
     }
 
     setErrors(newErrors)
@@ -72,6 +80,9 @@ export default function UserForm({ isLogin, setIsLogin, onSwitchToStudio }: User
 
       if (response.ok && data.success) {
         if (isLogin) {
+          // Set loading state to prevent UI flickering
+          setLoading(true)
+          
           // Set auth cookies
           const token = 'user-' + Date.now()
           document.cookie = `auth-token=${token}; path=/; max-age=86400; SameSite=Strict`
@@ -86,10 +97,17 @@ export default function UserForm({ isLogin, setIsLogin, onSwitchToStudio }: User
           // Update AuthContext with user data
           login(data.user)
           
-          // Small delay to ensure auth state is updated before redirect
-          setTimeout(() => {
-            router.push('/dashboard')
-          }, 100)
+          // Close modal if callback provided
+          if (onSuccess) {
+            onSuccess()
+          }
+          
+          // Redirect to personalized user page
+          const username = data.user.fullName?.toLowerCase().replace(/\s+/g, '-') || 'user'
+          router.push(`/user/${username}`)
+          
+          // Prevent any further execution
+          return
         } else {
           setSuccess("Registration successful! Please login.")
           setTimeout(() => {
@@ -116,13 +134,13 @@ export default function UserForm({ isLogin, setIsLogin, onSwitchToStudio }: User
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-8 space-y-6">
+    <div className="space-y-3">
       {/* Header */}
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+      <div className="text-center space-y-1">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
           {isLogin ? "Welcome Back" : "Create Account"}
         </h1>
-        <p className="text-slate-600 dark:text-slate-400">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           {isLogin ? "Sign in to your account" : "Join us today"}
         </p>
       </div>
@@ -152,7 +170,7 @@ export default function UserForm({ isLogin, setIsLogin, onSwitchToStudio }: User
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-3">
         {/* Full Name (Signup only) */}
         {!isLogin && (
           <div>
@@ -221,6 +239,45 @@ export default function UserForm({ isLogin, setIsLogin, onSwitchToStudio }: User
           <OTPInput />
         )}
 
+        {/* Confirm Password (Signup only) */}
+        {!isLogin && !useOTP && (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Confirm Password</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+              <input
+                type={showPassword ? "text" : "password"}
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+                placeholder="••••••••"
+                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition"
+              />
+            </div>
+            {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
+            {/* Password Match Indicator */}
+            {formData.password && formData.confirmPassword && (
+              <div className="mt-2">
+                {formData.password === formData.confirmPassword ? (
+                  <p className="text-green-600 text-sm flex items-center gap-1">
+                    <span className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs">✓</span>
+                    </span>
+                    Passwords match
+                  </p>
+                ) : (
+                  <p className="text-red-500 text-sm flex items-center gap-1">
+                    <span className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs">✗</span>
+                    </span>
+                    Passwords do not match
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* OTP Toggle for Login */}
         {isLogin && (
           <button
@@ -276,6 +333,7 @@ export default function UserForm({ isLogin, setIsLogin, onSwitchToStudio }: User
         <button
           onClick={onSwitchToStudio}
           className="w-full text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-medium py-2 transition"
+          disabled={!onSwitchToStudio}
         >
           Are you a Studio? {isLogin ? "Login" : "Sign up"}
         </button>

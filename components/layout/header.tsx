@@ -21,34 +21,64 @@ export function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
+          <nav className="hidden md:flex items-center justify-between flex-1 max-w-4xl mx-8">
             <Link 
               href="/" 
-              className="text-sm font-medium transition-colors hover:text-primary"
+              className="text-sm font-medium transition-colors hover:text-primary px-2 py-1"
             >
               Home
             </Link>
             <Link 
-              href="/gallery" 
-              className="text-sm font-medium transition-colors hover:text-primary"
-            >
-              Gallery
-            </Link>
-            <Link 
               href="/photographers" 
-              className="text-sm font-medium transition-colors hover:text-primary"
+              className="text-sm font-medium transition-colors hover:text-primary px-2 py-1"
             >
               Photographers
             </Link>
             <Link 
+              href="/gallery" 
+              className="text-sm font-medium transition-colors hover:text-primary px-2 py-1"
+            >
+              Gallery
+            </Link>
+            <Link 
+              href="/cities" 
+              className="text-sm font-medium transition-colors hover:text-primary px-2 py-1"
+            >
+              Cities
+            </Link>
+            <Link 
+              href="/categories" 
+              className="text-sm font-medium transition-colors hover:text-primary px-2 py-1"
+            >
+              Categories
+            </Link>
+            <Link 
+              href="/digital-album" 
+              className="text-sm font-medium transition-colors hover:text-primary px-2 py-1"
+            >
+              Digital Album
+            </Link>
+            <Link 
+              href="/digital-invitation" 
+              className="text-sm font-medium transition-colors hover:text-primary px-2 py-1"
+            >
+              Digital Invitation
+            </Link>
+            <Link 
+              href="/stories" 
+              className="text-sm font-medium transition-colors hover:text-primary px-2 py-1"
+            >
+              Real Stories
+            </Link>
+            <Link 
               href="/about" 
-              className="text-sm font-medium transition-colors hover:text-primary"
+              className="text-sm font-medium transition-colors hover:text-primary px-2 py-1"
             >
               About
             </Link>
             <Link 
               href="/contact" 
-              className="text-sm font-medium transition-colors hover:text-primary"
+              className="text-sm font-medium transition-colors hover:text-primary px-2 py-1"
             >
               Contact
             </Link>
@@ -99,6 +129,13 @@ export function Header() {
                 Home
               </Link>
               <Link 
+                href="/photographers" 
+                className="text-sm font-medium transition-colors hover:text-primary"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Photographers
+              </Link>
+              <Link 
                 href="/gallery" 
                 className="text-sm font-medium transition-colors hover:text-primary"
                 onClick={() => setIsMenuOpen(false)}
@@ -106,11 +143,39 @@ export function Header() {
                 Gallery
               </Link>
               <Link 
-                href="/photographers" 
+                href="/cities" 
                 className="text-sm font-medium transition-colors hover:text-primary"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Photographers
+                Cities
+              </Link>
+              <Link 
+                href="/categories" 
+                className="text-sm font-medium transition-colors hover:text-primary"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Categories
+              </Link>
+              <Link 
+                href="/digital-album" 
+                className="text-sm font-medium transition-colors hover:text-primary"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Digital Album
+              </Link>
+              <Link 
+                href="/digital-invitation" 
+                className="text-sm font-medium transition-colors hover:text-primary"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Digital Invitation
+              </Link>
+              <Link 
+                href="/stories" 
+                className="text-sm font-medium transition-colors hover:text-primary"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Real Stories
               </Link>
               <Link 
                 href="/about" 

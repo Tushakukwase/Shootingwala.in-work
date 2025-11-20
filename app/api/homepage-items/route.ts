@@ -54,8 +54,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (approvedCities.length === 0 && citiesData.cities) {
+      // Only show cities that are marked to show on home page
       approvedCities = citiesData.cities
-        .filter((city: any) => city.show_on_home || city.selected)
+        .filter((city: any) => city.show_on_home === true)
         .map((city: any) => ({
           name: city.name,
           image: city.image

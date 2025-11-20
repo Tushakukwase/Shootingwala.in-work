@@ -1,17 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { MockStorage } from '@/lib/mock-storage';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url);
+    const search = searchParams.get('search');
+    const category = searchParams.get('category');
+    
     const galleries = MockStorage.getGalleries()
+    
+    // Filter galleries by search or category
+    let filteredGalleries = galleries;
+    
+    if (category) {
+      // Filter by exact category match
+      filteredGalleries = galleries.filter((gallery: any) => 
+        gallery.category?.toLowerCase() === category.toLowerCase()
+      );
+    } else if (search) {
+      // Filter by search query
+      const searchLower = search.toLowerCase();
+      filteredGalleries = galleries.filter((gallery: any) => 
+        gallery.title?.toLowerCase().includes(searchLower) ||
+        gallery.category?.toLowerCase().includes(searchLower) ||
+        gallery.description?.toLowerCase().includes(searchLower)
+      );
+    }
     
     // Transform galleries to individual images
     const images: any[] = []
-    galleries.forEach((gallery: any) => {
+    filteredGalleries.forEach((gallery: any) => {
       gallery.images.forEach((imageUrl: string, index: number) => {
         images.push({
           id: `${gallery._id}-${index}`,
           imageUrl,
+          url: imageUrl,
+          title: gallery.title || gallery.category,
           category: gallery.category,
           uploaderName: 'Admin',
           uploadDate: gallery.createdAt

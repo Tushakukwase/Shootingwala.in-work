@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
+import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,12 +39,15 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 12)
+    
     // Create new studio with pending approval status
     const newStudio = {
       fullName,
       email: email.toLowerCase(),
       mobile,
-      password, // In a real app, hash this password
+      password: hashedPassword,
       username: email.toLowerCase(), // Use email as username
       emailVerified: true,
       mobileVerified: true,

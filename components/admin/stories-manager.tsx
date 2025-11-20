@@ -58,14 +58,17 @@ export default function StoriesManager() {
   const loadStories = async () => {
     try {
       setLoading(true)
+      console.log('Loading stories...')
 
       // Load admin stories
       const adminResponse = await fetch('/api/stories')
       const adminData = await adminResponse.json()
+      console.log('Admin stories data:', adminData)
 
       // Load photographer homepage requests
       const notificationsResponse = await fetch('/api/notifications')
       const notificationsData = await notificationsResponse.json()
+      console.log('Notifications data:', notificationsData)
 
       const allStories: StoryItem[] = []
 
@@ -77,13 +80,14 @@ export default function StoriesManager() {
           content: story.content,
           coverImage: story.imageUrl,
           date: story.date,
-          status: 'approved',
-          show_on_home: true,
+          status: story.status || 'approved', // Use actual database value or default to 'approved'
+          show_on_home: story.showOnHome === true, // Use actual database value
           createdAt: story.createdAt || new Date().toISOString(),
           created_by: 'admin',
           created_by_name: 'Admin',
           type: 'admin_story'
         }))
+        console.log('Processed admin stories:', adminStories)
         allStories.push(...adminStories)
       }
 
@@ -100,26 +104,31 @@ export default function StoriesManager() {
 
           if (storyData.success && storyData.stories.length > 0) {
             const story = storyData.stories[0]
-            allStories.push({
-              id: story.id,
-              title: story.title,
-              content: story.content,
-              coverImage: story.coverImage,
-              location: story.location,
-              date: story.date,
-              photographerId: story.photographerId,
-              photographerName: story.photographerName,
-              status: 'pending',
-              show_on_home: false,
-              createdAt: story.createdAt,
-              created_by: 'photographer',
-              created_by_name: story.photographerName,
-              type: 'photographer_story'
-            })
+            // Check if this story is already in the list (to avoid duplicates)
+            const isDuplicate = allStories.some(s => s.id === story.id)
+            if (!isDuplicate) {
+              allStories.push({
+                id: story.id,
+                title: story.title,
+                content: story.content,
+                coverImage: story.coverImage,
+                location: story.location,
+                date: story.date,
+                photographerId: story.photographerId,
+                photographerName: story.photographerName,
+                status: 'pending',
+                show_on_home: false,
+                createdAt: story.createdAt,
+                created_by: 'photographer',
+                created_by_name: story.photographerName,
+                type: 'photographer_story'
+              })
+            }
           }
         }
       }
 
+      console.log('All stories to display:', allStories)
       setStories(allStories)
     } catch (error) {
       console.error('Error loading stories:', error)
@@ -272,6 +281,18 @@ export default function StoriesManager() {
         })
 
         if (!response.ok) return
+      } else {
+        // Handle admin story toggle
+        const response = await fetch('/api/stories', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: storyId,
+            showOnHome: !currentValue
+          })
+        })
+
+        if (!response.ok) return
       }
 
       setStories(prev =>
@@ -287,41 +308,69 @@ export default function StoriesManager() {
   }
 
   const handleDelete = async (storyId: string) => {
-    if (!confirm('Are you sure you want to delete this story?')) return
+    if (!confirm('Are you sure you want to delete this story? This action cannot be undone.')) return
 
     try {
       const story = stories.find(s => s.id === storyId)
-      if (!story) return
-
-      if (story.type === 'photographer_story') {
-        const response = await fetch(`/api/photographer-stories?id=${storyId}`, {
-          method: 'DELETE'
-        })
-
-        if (!response.ok) return
-      } else {
-        // Handle admin story deletion if needed
-        const response = await fetch(`/api/stories/${storyId}`, {
-          method: 'DELETE'
-        })
-
-        if (!response.ok) return
+      if (!story) {
+        alert('Story not found')
+        return
       }
 
-      setStories(prev => prev.filter(story => story.id !== storyId))
+      let response
+      if (story.type === 'photographer_story') {
+        // For photographer stories, use the photographer-stories API with query parameter
+        response = await fetch(`/api/photographer-stories?id=${storyId}`, {
+          method: 'DELETE'
+        })
+      } else {
+        // For admin stories, use the stories API with query parameter
+        response = await fetch(`/api/stories?id=${storyId}`, {
+          method: 'DELETE'
+        })
+      }
+
+      // Check if response is ok and try to parse JSON
+      let responseData
+      try {
+        responseData = await response.json()
+      } catch (parseError) {
+        console.error('Error parsing response:', parseError)
+        alert('Failed to delete story: Invalid response format')
+        return
+      }
+
+      if (!response.ok || !responseData.success) {
+        alert(`Failed to delete story: ${responseData.error || 'Unknown error'}`)
+        return
+      }
+
+      // Remove the story from the local state (handle duplicates by removing only the specific one)
+      setStories(prev => {
+        const index = prev.findIndex(s => s.id === storyId && s.type === story.type)
+        if (index !== -1) {
+          const newStories = [...prev]
+          newStories.splice(index, 1)
+          return newStories
+        }
+        return prev
+      })
       alert('Story deleted successfully!')
     } catch (error) {
       console.error('Error deleting story:', error)
-      alert('Failed to delete story')
+      alert('Failed to delete story due to a network error')
     }
   }
 
   const filteredStories = stories.filter(story => {
-    const matchesSearch = story.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    // Handle search filter - if search term is empty, match all stories
+    const matchesSearch = !searchTerm || 
+      story.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       story.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      story.created_by_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (story.created_by_name && story.created_by_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
       (story.location && story.location.toLowerCase().includes(searchTerm.toLowerCase()))
 
+    // Handle status filter - if 'all', match all statuses
     const matchesStatus = statusFilter === 'all' || story.status === statusFilter
 
     return matchesSearch && matchesStatus
@@ -381,7 +430,8 @@ export default function StoriesManager() {
           content: newStory.content.trim(),
           imageUrl: newStory.coverImage,
           date: newStory.date || new Date().toLocaleDateString(),
-          published: true
+          published: true,
+          showOnHome: true // Set to true by default for admin stories
         })
       })
       
@@ -395,6 +445,109 @@ export default function StoriesManager() {
     } catch (error) {
       console.error('Error adding story:', error)
       alert('Failed to add story')
+    }
+  }
+
+  const handleUpdateStory = async () => {
+    if (!newStory.title.trim() || !newStory.content.trim()) {
+      alert('Please fill title and content')
+      return
+    }
+    
+    if (!selectedStory) {
+      alert('No story selected for update')
+      return
+    }
+    
+    try {
+      const response = await fetch('/api/stories', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedStory.id,
+          title: newStory.title.trim(),
+          content: newStory.content.trim(),
+          imageUrl: newStory.coverImage,
+          date: newStory.date || new Date().toLocaleDateString(),
+          showOnHome: newStory.show_on_home
+        })
+      })
+      
+      const data = await response.json()
+      if (data.success) {
+        setNewStory({ title: '', content: '', coverImage: '', location: '', date: '', show_on_home: true })
+        setSelectedStory(null)
+        setShowAddModal(false)
+        loadStories()
+        alert('Story updated successfully!')
+      } else {
+        alert(`Failed to update story: ${data.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error updating story:', error)
+      alert('Failed to update story')
+    }
+  }
+
+  const handleApproveAdminStory = async (storyId: string) => {
+    try {
+      const response = await fetch('/api/stories', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: storyId,
+          status: 'approved',
+          approved_at: new Date().toISOString()
+        })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setStories(prev =>
+          prev.map(story =>
+            story.id === storyId && story.created_by === 'admin'
+              ? { ...story, status: 'approved', approved_at: new Date().toISOString() }
+              : story
+          )
+        )
+        alert('Story approved successfully!')
+      } else {
+        alert(`Failed to approve story: ${data.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error approving story:', error)
+      alert('Failed to approve story')
+    }
+  }
+
+  const handleRejectAdminStory = async (storyId: string) => {
+    try {
+      const response = await fetch('/api/stories', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: storyId,
+          status: 'rejected',
+          approved_at: new Date().toISOString()
+        })
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        setStories(prev =>
+          prev.map(story =>
+            story.id === storyId && story.created_by === 'admin'
+              ? { ...story, status: 'rejected', approved_at: new Date().toISOString() }
+              : story
+          )
+        )
+        alert('Story rejected successfully!')
+      } else {
+        alert(`Failed to reject story: ${data.error || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error rejecting story:', error)
+      alert('Failed to reject story')
     }
   }
 
@@ -528,169 +681,183 @@ export default function StoriesManager() {
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
           {filteredStories.map(story => (
-            <Card key={story.id} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  {/* Cover Image */}
-                  <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                    {story.coverImage ? (
-                      <img
-                        src={story.coverImage}
-                        alt={story.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <ImageIcon className="w-8 h-8 text-gray-400" />
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg">{story.title}</h3>
-                      {getStatusBadge(story.status)}
-                      {story.status === 'approved' && (
-                        <div className="flex items-center gap-2">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <div className="relative">
-                              <input
-                                type="checkbox"
-                                checked={story.show_on_home}
-                                onChange={() => toggleShowOnHome(story.id, story.show_on_home)}
-                                className="sr-only"
-                              />
-                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${story.show_on_home
-                                ? 'bg-green-500 border-green-500'
-                                : 'border-gray-300 hover:border-green-400'
-                                }`}>
-                                {story.show_on_home && (
-                                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                )}
-                              </div>
-                            </div>
-                            <span className="text-sm font-medium text-gray-700">Show on Home Page</span>
-                          </label>
-                        </div>
-                      )}
+            <div 
+              key={`${story.id}-${story.type}`} 
+              className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex flex-col h-full"
+            >
+              <div className="flex flex-col h-full">
+                {/* Cover Image */}
+                <div className="mb-3">
+                  {story.coverImage ? (
+                    <img
+                      src={story.coverImage}
+                      alt={story.title}
+                      className="w-full h-32 object-cover rounded"
+                    />
+                  ) : (
+                    <div className="w-full h-32 bg-gray-200 rounded flex items-center justify-center">
+                      <ImageIcon className="w-8 h-8 text-gray-400" />
                     </div>
-                    <p className="text-muted-foreground mb-3 line-clamp-2">{story.content}</p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-muted-foreground" />
-                        <span>
-                          {story.created_by === 'admin'
-                            ? 'Created By: Admin'
-                            : `Requested By: Photographer (${story.created_by_name})`
-                          }
-                        </span>
-                      </div>
-                      {story.location && (
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-muted-foreground" />
-                          <span>Location: {story.location}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <span>Date: {new Date(story.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      {story.approved_at && (
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-muted-foreground" />
-                          <span>
-                            {story.status === 'approved' ? 'Approved' : 'Rejected'}: {new Date(story.approved_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                  )}
+                </div>
+                
+                <div className="flex-1 space-y-2">
+                  <h3 className="font-semibold text-sm truncate">{story.title}</h3>
+                  
+                  <div className="flex justify-center">
+                    {getStatusBadge(story.status)}
                   </div>
-
-                  <div className="flex items-center gap-2 ml-4">
+                  
+                  <div className="text-xs text-gray-500 text-center">
+                    {new Date(story.createdAt).toLocaleDateString()}
+                  </div>
+                  
+                  <div className="text-xs text-gray-500 text-center truncate">
+                    {story.created_by === 'admin'
+                      ? 'Created By: Admin'
+                      : `By: ${story.created_by_name}`
+                    }
+                  </div>
+                </div>
+                
+                {/* Action Buttons */}
+                <div className="flex gap-1 flex-wrap mt-4">
+                  {/* View Details Button */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs px-2 py-1 flex-1"
+                    onClick={() => {
+                      setSelectedStory(story)
+                      setShowDetailsModal(true)
+                    }}
+                    title="View Details"
+                  >
+                    <Eye className="w-3 h-3" />
+                  </Button>
+                  
+                  {/* Edit Button */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs px-2 py-1 flex-1"
+                    onClick={() => {
+                      // Prepare story for editing
+                      setNewStory({
+                        title: story.title,
+                        content: story.content,
+                        coverImage: story.coverImage || '',
+                        location: story.location || '',
+                        date: story.date || '',
+                        show_on_home: story.show_on_home
+                      })
+                      setSelectedStory(story)
+                      setShowAddModal(true)
+                    }}
+                    title="Edit Story"
+                  >
+                    <Edit className="w-3 h-3" />
+                  </Button>
+                  
+                  {/* Approval/Rejection Buttons for Admin Stories */}
+                  {story.created_by === 'admin' && story.status !== 'approved' && (
                     <Button
                       size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedStory(story)
-                        setShowDetailsModal(true)
-                      }}
+                      className="bg-green-600 hover:bg-green-700 text-xs px-2 py-1 flex-1"
+                      onClick={() => handleApproveAdminStory(story.id)}
+                      title="Approve Story"
                     >
-                      <Eye className="w-3 h-3 mr-1" />
-                      View
+                      <CheckCircle className="w-3 h-3" />
                     </Button>
-
-                    {story.status === 'pending' && story.created_by === 'photographer' && (
-                      <>
-                        <Button
-                          size="sm"
-                          onClick={() => handleApprove(story.id)}
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleReject(story.id)}
-                        >
-                          <X className="w-3 h-3 mr-1" />
-                          Reject
-                        </Button>
-                      </>
-                    )}
-
-                    {story.status === 'rejected' && story.created_by === 'photographer' && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleApprove(story.id)}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Re-approve
-                      </Button>
-                    )}
-
-                    {story.status === 'approved' && story.created_by === 'photographer' && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleReject(story.id)}
-                      >
-                        <X className="w-3 h-3 mr-1" />
-                        Reject
-                      </Button>
-                    )}
-
-                    {story.status === 'approved' && (
-                      <Button
-                        size="sm"
-                        onClick={() => toggleShowOnHome(story.id, story.show_on_home)}
-                        className={story.show_on_home ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-600 hover:bg-gray-700"}
-                        title={story.show_on_home ? "Remove from Homepage" : "Show on Homepage"}
-                      >
-                        <Eye className="w-3 h-3 mr-1" />
-                        {story.show_on_home ? "Hide" : "Show"}
-                      </Button>
-                    )}
-
+                  )}
+                  
+                  {story.created_by === 'admin' && story.status === 'approved' && (
                     <Button
                       size="sm"
                       variant="destructive"
-                      onClick={() => handleDelete(story.id)}
+                      className="text-xs px-2 py-1 flex-1"
+                      onClick={() => handleRejectAdminStory(story.id)}
+                      title="Reject Story"
                     >
-                      <Trash2 className="w-3 h-3 mr-1" />
-                      Delete
+                      <X className="w-3 h-3" />
                     </Button>
-                  </div>
+                  )}
+                  
+                  {/* Approval/Rejection Buttons for Photographer Stories */}
+                  {story.status === 'pending' && story.created_by === 'photographer' && (
+                    <>
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-xs px-2 py-1 flex-1"
+                        onClick={() => handleApprove(story.id)}
+                        title="Approve Story"
+                      >
+                        <CheckCircle className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="text-xs px-2 py-1 flex-1"
+                        onClick={() => handleReject(story.id)}
+                        title="Reject Story"
+                      >
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </>
+                  )}
+                  
+                  {/* Re-approve Button for Rejected Photographer Stories */}
+                  {story.status === 'rejected' && story.created_by === 'photographer' && (
+                    <Button
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-xs px-2 py-1 flex-1"
+                      onClick={() => handleApprove(story.id)}
+                      title="Re-approve Story"
+                    >
+                      <CheckCircle className="w-3 h-3" />
+                    </Button>
+                  )}
+                  
+                  {/* Reject Button for Approved Photographer Stories */}
+                  {story.status === 'approved' && story.created_by === 'photographer' && (
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="text-xs px-2 py-1 flex-1"
+                      onClick={() => handleReject(story.id)}
+                      title="Reject Story"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  )}
+                  
+                  {/* Homepage Toggle Button (only for approved stories) */}
+                  {story.status === 'approved' && (
+                    <Button
+                      size="sm"
+                      className={story.show_on_home ? "bg-blue-600 hover:bg-blue-700 text-xs px-2 py-1 flex-1" : "bg-gray-600 hover:bg-gray-700 text-xs px-2 py-1 flex-1"}
+                      onClick={() => toggleShowOnHome(story.id, story.show_on_home)}
+                      title={story.show_on_home ? "Remove from Homepage" : "Show on Homepage"}
+                    >
+                      <Eye className="w-3 h-3" />
+                    </Button>
+                  )}
+                  
+                  {/* Delete Button */}
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="text-xs px-2 py-1 flex-1"
+                    onClick={() => handleDelete(story.id)}
+                    title="Delete Story"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -798,13 +965,13 @@ export default function StoriesManager() {
         </div>
       )}
 
-      {/* Add Story Modal */}
+      {/* Add/Edit Story Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <Card className="w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Add New Story</CardTitle>
+                <CardTitle>{selectedStory ? 'Edit Story' : 'Add New Story'}</CardTitle>
                 <Button variant="ghost" size="sm" onClick={() => setShowAddModal(false)}>
                   <X className="w-4 h-4" />
                 </Button>
@@ -887,11 +1054,11 @@ export default function StoriesManager() {
 
               <div className="flex gap-2 pt-4">
                 <Button 
-                  onClick={handleAddStory} 
+                  onClick={selectedStory ? handleUpdateStory : handleAddStory} 
                   className="flex-1"
                   disabled={!newStory.title.trim() || !newStory.content.trim() || uploading}
                 >
-                  Create Story
+                  {selectedStory ? 'Update Story' : 'Create Story'}
                 </Button>
                 <Button variant="outline" onClick={() => setShowAddModal(false)} className="flex-1">
                   Cancel

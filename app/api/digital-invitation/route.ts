@@ -15,7 +15,11 @@ export async function GET() {
         eventTitle: '',
         eventDate: '',
         eventLocation: '',
-        description: ''
+        description: '',
+        buttonText: 'Know More',
+        buttonAction: 'redirect',
+        redirectUrl: '/digital-invitations',
+        isEnabled: true
       })
     }
     
@@ -24,7 +28,11 @@ export async function GET() {
       eventTitle: invitationData.eventTitle || '',
       eventDate: invitationData.eventDate || '',
       eventLocation: invitationData.eventLocation || '',
-      description: invitationData.description || ''
+      description: invitationData.description || '',
+      buttonText: invitationData.buttonText || 'Know More',
+      buttonAction: invitationData.buttonAction || 'redirect',
+      redirectUrl: invitationData.redirectUrl || '/digital-invitations',
+      isEnabled: invitationData.isEnabled !== undefined ? invitationData.isEnabled : true
     })
   } catch (error) {
     console.error('Failed to fetch invitation data:', error)
@@ -50,6 +58,10 @@ export async function POST(request: NextRequest) {
       eventDate: body.eventDate || '',
       eventLocation: body.eventLocation || '',
       description: body.description || '',
+      buttonText: body.buttonText || 'Know More',
+      buttonAction: body.buttonAction || 'redirect',
+      redirectUrl: body.redirectUrl || '/digital-invitations',
+      isEnabled: body.isEnabled !== undefined ? body.isEnabled : true,
       updatedAt: new Date()
     }
     
@@ -68,7 +80,11 @@ export async function POST(request: NextRequest) {
         eventTitle: invitationData.eventTitle,
         eventDate: invitationData.eventDate,
         eventLocation: invitationData.eventLocation,
-        description: invitationData.description
+        description: invitationData.description,
+        buttonText: invitationData.buttonText,
+        buttonAction: invitationData.buttonAction,
+        redirectUrl: invitationData.redirectUrl,
+        isEnabled: invitationData.isEnabled
       }
     })
   } catch (error) {

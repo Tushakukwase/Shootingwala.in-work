@@ -51,13 +51,24 @@ export default function NotificationDropdown() {
   const fetchNotifications = async () => {
     try {
       const response = await fetch('/api/notifications?userId=admin')
+      
+      if (!response.ok) {
+        console.error('Failed to fetch notifications:', response.status, response.statusText)
+        return
+      }
+      
       const data = await response.json()
       
       if (data.success && data.notifications) {
         setNotifications(data.notifications)
+      } else {
+        // Set empty array if no notifications
+        setNotifications([])
       }
     } catch (error) {
       console.error('Error fetching notifications:', error)
+      // Set empty array on error to prevent UI issues
+      setNotifications([])
     }
   }
 
@@ -128,7 +139,7 @@ export default function NotificationDropdown() {
         window.location.href = '/admin#cities'
       } else if (notification.type === 'photographer_registration') {
         // Redirect to photographer approvals
-        window.location.href = '/admin#pending-photographers'
+        window.location.href = '/admin#photographers'
       }
     }
     

@@ -43,6 +43,22 @@ export default function CityRegistration() {
   const [isDragging, setIsDragging] = useState(false)
   const [uploading, setUploading] = useState(false)
 
+  const refreshAllData = async () => {
+    if (!photographerId) return;
+    
+    setLoading(true);
+    try {
+      await Promise.all([
+        loadApprovedCities(),
+        loadSuggestions(photographerId)
+      ]);
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     // Get photographer data from localStorage
     const studioData = localStorage.getItem('studio')
@@ -93,7 +109,7 @@ export default function CityRegistration() {
       if (data.success && data.requests) {
         // Transform the data to match the expected format
         const cities = data.requests.map((city: CitySuggestion) => ({
-          id: city.id || city._id,
+          id: city.id,
           name: city.name,
           state: city.state,
           country: city.country,
@@ -240,13 +256,29 @@ export default function CityRegistration() {
   const rejectedSuggestions = suggestions.filter(r => r.status === 'rejected')
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">City Coverage</h1>
-        <Button onClick={() => setShowRequestModal(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
-          <Plus className="w-4 h-4 mr-2" />
-          Request New City
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={refreshAllData}
+            disabled={loading}
+          >
+            {loading ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            )}
+          </Button>
+          <Button onClick={() => setShowRequestModal(true)} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Plus className="w-4 h-4 mr-2" />
+            Request New City
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -257,25 +289,25 @@ export default function CityRegistration() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={loadApprovedCities}>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-primary">{approvedCities.length}</div>
               <div className="text-sm text-muted-foreground">Active Cities</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => loadSuggestions(photographerId)}>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-yellow-600">{pendingSuggestions.length}</div>
               <div className="text-sm text-muted-foreground">Pending Requests</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => loadSuggestions(photographerId)}>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-green-600">{approvedSuggestions.length}</div>
               <div className="text-sm text-muted-foreground">Your Approved</div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={refreshAllData}>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-blue-600">
                 {approvedCities.reduce((sum, city) => sum + (city.photographers || 0), 0)}
@@ -289,10 +321,26 @@ export default function CityRegistration() {
       {/* Active Cities */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-green-600" />
-            Active Cities
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-green-600" />
+              Active Cities
+            </CardTitle>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={loadApprovedCities}
+              disabled={loading}
+            >
+              {loading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              )}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {approvedCities.length === 0 ? (
@@ -302,9 +350,9 @@ export default function CityRegistration() {
               <p className="text-sm">Cities will appear here once admin approves requests</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {approvedCities.map(city => (
-                <div key={city.id} className="p-4 border border-green-200 bg-green-50 rounded-lg">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {approvedCities.map((city, index) => (
+                <div key={city.id || `approved-city-${index}`} className="p-4 border border-green-200 bg-green-50 rounded-lg">
                   {city.image_url && (
                     <div className="w-full h-32 mb-3 rounded-lg overflow-hidden">
                       <img 
@@ -343,8 +391,8 @@ export default function CityRegistration() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {pendingSuggestions.map(suggestion => (
-                <div key={suggestion.id} className="p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
+              {pendingSuggestions.map((suggestion, index) => (
+                <div key={suggestion.id || `pending-${index}`} className="p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold">{suggestion.name}, {suggestion.state}</h3>
                     {getStatusBadge(suggestion.status)}
@@ -382,8 +430,8 @@ export default function CityRegistration() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {approvedSuggestions.map(suggestion => (
-                <div key={suggestion.id} className="p-4 border border-green-200 bg-green-50 rounded-lg">
+              {approvedSuggestions.map((suggestion, index) => (
+                <div key={suggestion.id || `approved-${index}`} className="p-4 border border-green-200 bg-green-50 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold">{suggestion.name}, {suggestion.state}</h3>
                     {getStatusBadge(suggestion.status)}
@@ -415,8 +463,8 @@ export default function CityRegistration() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {rejectedSuggestions.map(suggestion => (
-                <div key={suggestion.id} className="p-4 border border-red-200 bg-red-50 rounded-lg">
+              {rejectedSuggestions.map((suggestion, index) => (
+                <div key={suggestion.id || `rejected-${index}`} className="p-4 border border-red-200 bg-red-50 rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold">{suggestion.name}, {suggestion.state}</h3>
                     {getStatusBadge(suggestion.status)}

@@ -11,52 +11,70 @@ export async function GET(request: NextRequest) {
     // Get both galleries and stories
     const galleries = MockStorage.getGalleries()
     const stories = MockStorage.getStories()
+    const likes = MockStorage.getLikes()
+    const comments = MockStorage.getComments()
     
     // Transform galleries to unified format
-    const galleryContent = galleries.map((gallery: any) => ({
-      id: gallery._id,
-      title: gallery.title,
-      description: gallery.description || `Gallery by ${gallery.photographerName || 'Admin'}`,
-      image_url: gallery.images && gallery.images.length > 0 ? gallery.images[0] : null,
-      type: 'gallery',
-      created_by: gallery.photographerId ? 'photographer' : 'admin',
-      created_by_name: gallery.photographerName || 'Admin',
-      created_by_id: gallery.photographerId || 'admin',
-      status: gallery.status || 'approved',
-      approved_by: gallery.approved_by || null,
-      approved_by_id: gallery.approved_by || null,
-      request_date: gallery.request_date || null,
-      approved_at: gallery.approved_at || gallery.createdAt,
-      is_notified: gallery.is_notified || false,
-      showOnHome: gallery.showOnHome || false,
-      createdAt: gallery.createdAt,
-      images: gallery.images || [],
-      photographerId: gallery.photographerId
-    }))
+    const galleryContent = galleries.map((gallery: any) => {
+      // Get likes and comments count for this gallery
+      const galleryLikes = likes.filter((like: any) => like.contentId === gallery._id).length
+      const galleryComments = comments.filter((comment: any) => comment.contentId === gallery._id).length
+      
+      return {
+        id: gallery._id,
+        title: gallery.title,
+        description: gallery.description || `Gallery by ${gallery.photographerName || 'Admin'}`,
+        image_url: gallery.images && gallery.images.length > 0 ? gallery.images[0] : null,
+        type: 'gallery',
+        created_by: gallery.photographerId ? 'photographer' : 'admin',
+        created_by_name: gallery.photographerName || 'Admin',
+        created_by_id: gallery.photographerId || 'admin',
+        status: gallery.status || 'approved',
+        approved_by: gallery.approved_by || null,
+        approved_by_id: gallery.approved_by || null,
+        request_date: gallery.request_date || null,
+        approved_at: gallery.approved_at || gallery.createdAt,
+        is_notified: gallery.is_notified || false,
+        showOnHome: gallery.showOnHome || false,
+        createdAt: gallery.createdAt,
+        images: gallery.images || [],
+        photographerId: gallery.photographerId,
+        likes: galleryLikes,
+        comments: galleryComments
+      }
+    })
     
     // Transform stories to unified format
-    const storyContent = stories.map((story: any) => ({
-      id: story._id,
-      title: story.title,
-      description: story.content || story.description || '',
-      image_url: story.coverImage || story.imageUrl || null,
-      type: 'story',
-      created_by: story.photographerId ? 'photographer' : 'admin',
-      created_by_name: story.photographerName || story.photographer || 'Admin',
-      created_by_id: story.photographerId || 'admin',
-      status: story.status || 'approved',
-      approved_by: story.approved_by || null,
-      approved_by_id: story.approved_by || null,
-      request_date: story.request_date || null,
-      approved_at: story.approved_at || story.createdAt,
-      is_notified: story.is_notified || false,
-      showOnHome: story.showOnHome || false,
-      createdAt: story.createdAt,
-      content: story.content || '',
-      location: story.location || '',
-      date: story.date || '',
-      photographerId: story.photographerId
-    }))
+    const storyContent = stories.map((story: any) => {
+      // Get likes and comments count for this story
+      const storyLikes = likes.filter((like: any) => like.contentId === story._id).length
+      const storyComments = comments.filter((comment: any) => comment.contentId === story._id).length
+      
+      return {
+        id: story._id,
+        title: story.title,
+        description: story.content || story.description || '',
+        image_url: story.coverImage || story.imageUrl || null,
+        type: 'story',
+        created_by: story.photographerId ? 'photographer' : 'admin',
+        created_by_name: story.photographerName || story.photographer || 'Admin',
+        created_by_id: story.photographerId || 'admin',
+        status: story.status || 'approved',
+        approved_by: story.approved_by || null,
+        approved_by_id: story.approved_by || null,
+        request_date: story.request_date || null,
+        approved_at: story.approved_at || story.createdAt,
+        is_notified: story.is_notified || false,
+        showOnHome: story.showOnHome || false,
+        createdAt: story.createdAt,
+        content: story.content || '',
+        location: story.location || '',
+        date: story.date || '',
+        photographerId: story.photographerId,
+        likes: storyLikes,
+        comments: storyComments
+      }
+    })
     
     // Combine all content
     let allContent = [...galleryContent, ...storyContent]

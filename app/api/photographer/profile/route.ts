@@ -101,6 +101,8 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
+    console.log('PUT request body:', JSON.stringify(body, null, 2))
+    
     const { 
       id, 
       name, 
@@ -116,6 +118,7 @@ export async function PUT(request: NextRequest) {
     } = body
     
     if (!id) {
+      console.error('No photographer ID provided')
       return NextResponse.json(
         { success: false, error: 'Photographer ID is required' },
         { status: 400 }
@@ -133,12 +136,15 @@ export async function PUT(request: NextRequest) {
     if (email) updateData.email = email.toLowerCase()
     if (phone) updateData.phone = phone
     if (location) updateData.location = location
-    if (categories) updateData.categories = Array.isArray(categories) ? categories : [categories]
+    if (categories) {
+      const categoryArray = Array.isArray(categories) ? categories : [categories]
+      updateData.categories = categoryArray
+      updateData.tags = categoryArray
+    }
     if (image) updateData.image = image
     if (description || bio) updateData.description = description || bio
-    if (experience !== undefined) updateData.experience = Number(experience)
-    if (startingPrice !== undefined) updateData.startingPrice = Number(startingPrice)
-    if (categories) updateData.tags = Array.isArray(categories) ? categories : [categories]
+    if (experience !== undefined) updateData.experience = Number(experience) || 0
+    if (startingPrice !== undefined) updateData.startingPrice = Number(startingPrice) || 200
     
     let query: any = {}
     if (ObjectId.isValid(id)) {
@@ -147,12 +153,18 @@ export async function PUT(request: NextRequest) {
       query._id = id
     }
     
+    console.log('Update query:', query)
+    console.log('Update data:', JSON.stringify(updateData, null, 2))
+    
     const result = await db.collection('photographers').updateOne(
       query,
       { $set: updateData }
     )
     
+    console.log('Update result:', result)
+    
     if (result.matchedCount === 0) {
+      console.error('Photographer not found with query:', query)
       return NextResponse.json(
         { success: false, error: 'Photographer not found' },
         { status: 404 }

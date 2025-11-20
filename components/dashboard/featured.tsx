@@ -24,6 +24,10 @@ interface Photographer {
   startingPrice: number
   tags: string[]
   createdAt: string
+  // Studio banner image fields
+  studioBannerImage?: string
+  bannerImage?: string
+  studioName?: string
 }
 
 export function Featured() {
@@ -91,7 +95,7 @@ export function Featured() {
             >
               <div className="relative h-40 w-full bg-yellow-50">
                 <Image
-                  src={p.image || `/placeholder.svg?height=160&width=320&query=photographer+studio`}
+                  src={p.studioBannerImage || p.bannerImage || p.image || `/placeholder.svg?height=160&width=320&query=photographer+studio`}
                   alt={`${p.name} studio banner`}
                   fill
                   sizes="(min-width: 1024px) 25vw, 50vw"

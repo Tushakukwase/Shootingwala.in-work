@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
+import bcrypt from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
   try {
-    const { username, password } = await request.json()
+    const { email, username, password } = await request.json()
+    const loginIdentifier = email || username
     
-    if (!username || !password) {
+    if (!loginIdentifier || !password) {
       return NextResponse.json(
-        { success: false, error: 'Username and password are required' },
+        { success: false, error: 'Email and password are required' },
         { status: 400 }
       )
     }
@@ -47,7 +49,7 @@ export async function POST(request: NextRequest) {
     
     // Check demo accounts first
     let studio = demoAccounts.find(account => 
-      (account.username === username.toLowerCase() || account.email === username.toLowerCase()) &&
+      (account.username === loginIdentifier.toLowerCase() || account.email === loginIdentifier.toLowerCase()) &&
       account.password === password
     )
     
@@ -63,8 +65,8 @@ export async function POST(request: NextRequest) {
     if (!studio) {
       studio = await studios.findOne({
         $or: [
-          { username: username.toLowerCase() },
-          { email: username.toLowerCase() }
+          { username: loginIdentifier.toLowerCase() },
+          { email: loginIdentifier.toLowerCase() }
         ]
       })
       
@@ -75,9 +77,9 @@ export async function POST(request: NextRequest) {
         )
       }
       
-      // In a real app, you would hash and compare passwords
-      // For demo purposes, we'll do a simple comparison
-      if (studio.password !== password) {
+      // Compare hashed password
+      const isPasswordValid = await bcrypt.compare(password, studio.password)
+      if (!isPasswordValid) {
         return NextResponse.json(
           { success: false, error: 'Invalid credentials' },
           { status: 401 }
@@ -115,9 +117,9 @@ export async function POST(request: NextRequest) {
       if (!photographer) {
         // Create photographer record from studio data
         const newPhotographer = {
-          name: studio.name || studio.username || studio.photographerName || 'Photographer',
+          name: studio.fullName || studio.name || studio.username || studio.photographerName || 'Photographer',
           email: studio.email.toLowerCase(),
-          phone: studio.mobile || studio.mobileNumber || '',
+          phone: studio.mobile || studio.mobileNumber || studio.phone || '',
           location: studio.location || '',
           categories: studio.categories || ['Wedding Photography'],
           image: studio.image || null,
@@ -125,17 +127,59 @@ export async function POST(request: NextRequest) {
           experience: studio.experience || 0,
           rating: studio.rating || 0,
           isVerified: studio.emailVerified || false,
-          isApproved: true, // Auto-approve studio users
-          status: 'approved',
+          isApproved: studio.status === 'approved' || studio.isApproved || true,
+          status: studio.status || 'approved',
           createdBy: 'studio',
           startingPrice: studio.startingPrice || 200,
           tags: studio.tags || studio.categories || ['Wedding Photography'],
           createdAt: studio.createdAt || new Date(),
           registrationDate: studio.createdAt || new Date(),
-          studioId: studio._id.toString(), // Link to studio record
+          studioId: studio._id.toString(),
+          totalReviews: 0,
+          totalBookings: 0,
+          totalEarnings: 0,
+          lastActive: new Date().toISOString(),
+          verified: studio.emailVerified || false
         }
         
-        await photographers.insertOne(newPhotographer)
+        const result = await photographers.insertOne(newPhotographer)
+        
+        // Update studio with photographer ID
+        await db.collection('studios').updateOne(
+          { _id: studio._id },
+          { $set: { photographerId: result.insertedId } }
+        )
+      } else {
+        // Update photographer status to match studio status
+        const updateData: any = {
+          lastActive: new Date().toISOString(),
+          updatedAt: new Date()
+        }
+        
+        if (studio.status && photographer.status !== studio.status) {
+          updateData.status = studio.status
+        }
+        
+        if (studio.isApproved !== undefined && photographer.isApproved !== studio.isApproved) {
+          updateData.isApproved = studio.isApproved
+        }
+        
+        if (!photographer.studioId) {
+          updateData.studioId = studio._id.toString()
+        }
+        
+        await photographers.updateOne(
+          { _id: photographer._id },
+          { $set: updateData }
+        )
+        
+        // Update studio with photographer ID if missing
+        if (!studio.photographerId) {
+          await db.collection('studios').updateOne(
+            { _id: studio._id },
+            { $set: { photographerId: photographer._id } }
+          )
+        }
       }
     }
     

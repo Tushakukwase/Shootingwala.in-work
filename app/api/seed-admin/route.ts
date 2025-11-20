@@ -8,22 +8,47 @@ export async function POST(req: NextRequest) {
     const studios = db.collection('studios')
     
     // Check if admin already exists
-    const existingAdmin = await studios.findOne({ username: 'admin' })
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@photobook.com'
+    const existingAdmin = await studios.findOne({ 
+      $or: [
+        { username: 'admin' },
+        { email: adminEmail },
+        { role: 'admin' }
+      ]
+    })
+    
     if (existingAdmin) {
+      // Update existing admin with proper fields
+      await studios.updateOne(
+        { _id: existingAdmin._id },
+        { 
+          $set: {
+            email: adminEmail,
+            role: 'admin',
+            isAdmin: true,
+            adminAccess: true,
+            updatedAt: new Date()
+          }
+        }
+      )
       return NextResponse.json({ 
         success: true, 
-        message: 'Admin user already exists' 
+        message: 'Admin user updated successfully' 
       })
     }
     
-    // Create admin user
+    // Create admin user with email from environment
     const adminUser = {
       username: 'admin',
-      email: 'admin@photobook.com',
+      email: adminEmail,
       password: 'admin123', // In production, this should be hashed
       name: 'Admin User',
+      fullName: 'Admin User',
       role: 'admin',
-      createdAt: new Date()
+      isAdmin: true,
+      adminAccess: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
     }
     
     await studios.insertOne(adminUser)

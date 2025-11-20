@@ -22,8 +22,13 @@ export default function AvailabilityCalendar() {
     .concat(Array.from({ length: daysInMonth }, (_, i) => i + 1))
 
   return (
-    <div className="p-8 space-y-6">
-      <h1 className="text-3xl font-bold text-foreground">Availability Calendar</h1>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold text-foreground">Availability Calendar</h1>
+        <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
+          Update Availability
+        </Button>
+      </div>
       
       <Card>
         <CardHeader>
@@ -64,10 +69,6 @@ export default function AvailabilityCalendar() {
               <span className="text-sm text-foreground">Booked</span>
             </div>
           </div>
-          
-          <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-            Update Availability
-          </Button>
         </CardContent>
       </Card>
     </div>

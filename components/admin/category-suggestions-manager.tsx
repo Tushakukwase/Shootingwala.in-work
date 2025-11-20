@@ -61,7 +61,7 @@ export default function CategorySuggestionsManager() {
         // Normalize the data to ensure proper id field
         const normalizedSuggestions = data.requests.map((suggestion: any) => ({
           ...suggestion,
-          id: suggestion.id || suggestion._id?.toString() || `temp-${Date.now()}-${Math.random()}`
+          id: suggestion.id || `temp-${Date.now()}-${Math.random()}`
         }))
         setSuggestions(normalizedSuggestions)
       } else {
@@ -433,13 +433,13 @@ export default function CategorySuggestionsManager() {
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
           {filteredSuggestions.map((suggestion, index) => (
-            <Card key={suggestion.id || suggestion._id || `suggestion-${index}`} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
+            <Card key={suggestion.id || `suggestion-${index}`} className="hover:shadow-lg transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex flex-col h-full">
                   {/* Image Thumbnail */}
-                  <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                  <div className="w-full h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 mb-3">
                     {suggestion.image_url ? (
                       <img 
                         src={suggestion.image_url} 
@@ -453,72 +453,59 @@ export default function CategorySuggestionsManager() {
                     )}
                   </div>
                   
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg">{suggestion.name}</h3>
+                  <div className="flex-1 flex flex-col">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="font-semibold text-sm truncate">{suggestion.name}</h3>
                       {getStatusBadge(suggestion.status)}
-                      {suggestion.status === 'approved' && (
-                        <div className="flex items-center gap-2">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <div className="relative">
-                              <input
-                                type="checkbox"
-                                checked={suggestion.show_on_home}
-                                onChange={() => toggleShowOnHome(suggestion.id, suggestion.show_on_home)}
-                                className="sr-only"
-                              />
-                              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                                suggestion.show_on_home 
-                                  ? 'bg-green-500 border-green-500' 
-                                  : 'border-gray-300 hover:border-green-400'
-                              }`}>
-                                {suggestion.show_on_home && (
-                                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                  </svg>
-                                )}
-                              </div>
-                            </div>
-                            <span className="text-sm font-medium text-gray-700">Show on Home Page</span>
-                          </label>
-                        </div>
-                      )}
                     </div>
                     
-                    <p className="text-muted-foreground mb-3">{suggestion.description}</p>
+                    <p className="text-muted-foreground text-xs mb-2 line-clamp-2">{suggestion.description}</p>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-muted-foreground" />
-                        <span>
+                    <div className="text-xs mb-3">
+                      <div className="flex items-center gap-1 mb-1">
+                        <User className="w-3 h-3 text-muted-foreground" />
+                        <span className="truncate">
                           {suggestion.created_by === 'admin' 
-                            ? 'Created By: Admin' 
-                            : `Requested By: Photographer (${suggestion.created_by_name})`
+                            ? 'Admin' 
+                            : suggestion.created_by_name
                           }
                         </span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <span>Date: {new Date(suggestion.created_at).toLocaleDateString()}</span>
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-muted-foreground" />
+                        <span>{new Date(suggestion.created_at).toLocaleDateString()}</span>
                       </div>
-                      {suggestion.approved_at && (
-                        <div className="flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4 text-muted-foreground" />
-                          <span>
-                            {suggestion.status === 'approved' ? 'Approved' : 'Rejected'}: {new Date(suggestion.approved_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                      )}
                     </div>
                     
-                    {suggestion.adminName && (
-                      <div className="mt-2 text-sm text-muted-foreground">
-                        {suggestion.status === 'approved' ? 'Approved' : 'Rejected'} by: {suggestion.adminName}
+                    {suggestion.status === 'approved' && (
+                      <div className="mt-auto pt-2 border-t border-gray-100">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <div className="relative">
+                            <input
+                              type="checkbox"
+                              checked={suggestion.show_on_home}
+                              onChange={() => toggleShowOnHome(suggestion.id, suggestion.show_on_home)}
+                              className="sr-only"
+                            />
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${
+                              suggestion.show_on_home 
+                                ? 'bg-green-500 border-green-500' 
+                                : 'border-gray-300 hover:border-green-400'
+                            }`}>
+                              {suggestion.show_on_home && (
+                                <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                          </div>
+                          <span className="text-xs font-medium text-gray-700">Show on Home</span>
+                        </label>
                       </div>
                     )}
                   </div>
                   
-                  <div className="flex items-center gap-2 ml-4">
+                  <div className="flex items-center gap-1 mt-3 pt-3 border-t border-gray-100">
                     <Button
                       size="sm"
                       variant="outline"
@@ -526,6 +513,7 @@ export default function CategorySuggestionsManager() {
                         setSelectedSuggestion(suggestion)
                         setShowDetailsModal(true)
                       }}
+                      className="h-7 px-2 text-xs flex-1"
                     >
                       <Eye className="w-3 h-3 mr-1" />
                       View
@@ -538,6 +526,7 @@ export default function CategorySuggestionsManager() {
                         setEditingCategory(suggestion)
                         setShowEditModal(true)
                       }}
+                      className="h-7 px-2 text-xs flex-1"
                     >
                       <Edit className="w-3 h-3 mr-1" />
                       Edit
@@ -548,7 +537,7 @@ export default function CategorySuggestionsManager() {
                         <Button
                           size="sm"
                           onClick={() => handleApprove(suggestion.id)}
-                          className="bg-green-600 hover:bg-green-700"
+                          className="h-7 px-2 text-xs bg-green-600 hover:bg-green-700 flex-1"
                         >
                           <CheckCircle className="w-3 h-3 mr-1" />
                           Approve
@@ -557,6 +546,7 @@ export default function CategorySuggestionsManager() {
                           size="sm"
                           variant="destructive"
                           onClick={() => handleReject(suggestion.id)}
+                          className="h-7 px-2 text-xs flex-1"
                         >
                           <X className="w-3 h-3 mr-1" />
                           Reject
@@ -568,6 +558,7 @@ export default function CategorySuggestionsManager() {
                       size="sm"
                       variant="destructive"
                       onClick={() => handleDelete(suggestion.id)}
+                      className="h-7 px-2 text-xs flex-1"
                     >
                       <Trash2 className="w-3 h-3 mr-1" />
                       Delete

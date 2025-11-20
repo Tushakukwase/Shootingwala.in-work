@@ -1,6 +1,6 @@
 "use client"
 
-import { LogOut, Bell, User, Settings, Edit } from "lucide-react"
+import { LogOut, Bell, User, Settings, Edit, Camera, Menu, X } from "lucide-react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,8 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import NotificationCenter from "./notification-center"
 import PhotographerNotificationDropdown from "./studio/notification-dropdown"
+import Link from "next/link"
+import { isUserLoggedIn, getUserData } from '@/lib/auth-utils'
 
 interface StudioData {
   _id: string
@@ -20,6 +22,7 @@ interface StudioData {
   photographerName?: string
   role?: string
   image?: string
+  phone?: string
 }
 
 export default function Header() {
@@ -33,34 +36,98 @@ export default function Header() {
     name: '',
     email: '',
     phone: '',
-    image: ''
+    image: '',
+    studioName: '',
+    role: 'Photographer'
   })
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
-    // Get studio data from localStorage
-    const data = localStorage.getItem('studio')
-    if (data) {
-      try {
-        const parsed = JSON.parse(data)
-        setStudioData(parsed)
+    // Check authentication status
+    const authenticated = isUserLoggedIn()
+    setIsAuthenticated(authenticated)
+    
+    if (authenticated) {
+      // Get studio data from localStorage
+      const data = getUserData()
+      if (data) {
+        // Convert to StudioData format
+        const studioDataFormatted: StudioData = {
+          _id: data.id,
+          name: data.fullName || data.name || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          username: data.username,
+          photographerName: data.photographerName,
+          role: data.role || 'photographer',
+          image: data.image
+        }
+        
+        setStudioData(studioDataFormatted)
+        
+        // Set profile data
         setProfileData({
-          name: parsed.name || parsed.photographerName || '',
-          email: parsed.email || '',
-          phone: parsed.phone || '',
-          image: parsed.image || ''
+          name: data.fullName || data.name || '',
+          email: data.email || '',
+          phone: data.phone || '',
+          image: data.image || '',
+          studioName: data.studioName || '',
+          role: data.role || 'Photographer'
         })
         
+        // Fetch complete profile data from API
+        fetchProfileData(data.id)
+        
         // Load unread notification count
-        loadUnreadCount(parsed._id)
-      } catch (error) {
-        console.error('Error parsing studio data:', error)
+        loadUnreadCount(data.id)
       }
     }
   }, [])
 
+  const fetchProfileData = async (photographerId: string) => {
+    try {
+      const response = await fetch(`/api/photographer-profile?id=${encodeURIComponent(photographerId)}`)
+      const data = await response.json()
+      
+      if (data.success && data.profile) {
+        const profile = data.profile
+        setProfileData({
+          name: profile.name || studioData?.name || studioData?.photographerName || '',
+          email: profile.email || studioData?.email || '',
+          phone: profile.phone || studioData?.phone || '',
+          image: profile.profileImage || studioData?.image || '',
+          studioName: profile.studioName || '',
+          role: 'Photographer'
+        })
+      } else {
+        // Fallback to localStorage data
+        setProfileData({
+          name: studioData?.name || studioData?.photographerName || '',
+          email: studioData?.email || '',
+          phone: studioData?.phone || '',
+          image: studioData?.image || '',
+          studioName: '',
+          role: 'Photographer'
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching profile data:', error)
+      // Fallback to localStorage data
+      setProfileData({
+        name: studioData?.name || studioData?.photographerName || '',
+        email: studioData?.email || '',
+        phone: studioData?.phone || '',
+        image: studioData?.image || '',
+        studioName: '',
+        role: 'Photographer'
+      })
+    }
+  }
+
   const loadUnreadCount = async (userId: string) => {
     try {
-      const response = await fetch(`/api/notifications?userId=${userId}&unreadOnly=true`)
+      const response = await fetch(`/api/notifications?userId=${encodeURIComponent(userId)}&unreadOnly=true`)
       const data = await response.json()
       
       if (data.success && data.notifications) {
@@ -80,17 +147,17 @@ export default function Header() {
     document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
     document.cookie = 'user=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
     
-    // Redirect to login
-    router.push('/studio-auth')
+    // Redirect to home page
+    router.push('/')
   }
 
   const getDisplayName = () => {
-    if (!studioData) return "Photographer"
-    
-    return studioData.name || 
-           studioData.photographerName || 
-           studioData.username || 
-           studioData.email?.split('@')[0] || 
+    return profileData.studioName || 
+           profileData.name || 
+           studioData?.name || 
+           studioData?.photographerName || 
+           studioData?.username || 
+           studioData?.email?.split('@')[0] || 
            "Photographer"
   }
 
@@ -124,43 +191,148 @@ export default function Header() {
     }
   }
 
+  // Don't render header if user is not authenticated
+  if (!isAuthenticated) {
+    return null
+  }
+
   return (
-    <header className="bg-card border-b border-border px-8 py-4 flex items-center justify-between shadow-sm">
-      <h2 className="text-2xl font-bold text-foreground">STUDIO DASHBOARD</h2>
-      <div className="flex items-center gap-4">
-        <div className="text-right">
-          <p className="text-sm font-medium text-foreground">{getDisplayName()}</p>
-          <p className="text-xs text-muted-foreground">
-            {studioData?.role === 'admin' ? 'Administrator' : 'Photographer'}
-          </p>
+    <header className="bg-card border-b border-border px-4 py-3 flex items-center justify-between shadow-sm fixed top-0 left-0 right-0 z-50">
+      <div className="flex items-center gap-6">
+        {/* Logo */}
+        <Link href="/studio-dashboard" className="flex items-center space-x-2">
+          <div className="bg-orange-500 p-1.5 rounded-lg">
+            <Camera className="h-5 w-5 text-white" />
+          </div>
+          <span className="text-lg font-bold text-gray-900">ShootingWala</span>
+        </Link>
+      </div>
+
+      {/* Desktop Navigation - Centered */}
+      <nav className="hidden md:flex items-center justify-center flex-1">
+        <div className="flex items-center space-x-6">
+          <Link href="/studio-dashboard" className="text-sm font-medium text-foreground hover:text-orange-500 transition-colors">
+            Dashboard
+          </Link>
+          <Link href="/studio-dashboard#portfolio" className="text-sm font-medium text-foreground hover:text-orange-500 transition-colors">
+            Portfolio
+          </Link>
+          <Link href="/studio-dashboard#bookings" className="text-sm font-medium text-foreground hover:text-orange-500 transition-colors">
+            Bookings
+          </Link>
+          <Link href="/studio-dashboard#calendar" className="text-sm font-medium text-foreground hover:text-orange-500 transition-colors">
+            Calendar
+          </Link>
+          <Link href="/studio-dashboard#messages" className="text-sm font-medium text-foreground hover:text-orange-500 transition-colors">
+            Messages
+          </Link>
         </div>
+      </nav>
+
+      {/* Right side controls */}
+      <div className="flex items-center gap-4">
+        {/* Studio Name */}
+        {profileData.studioName && (
+          <span className="hidden md:inline text-sm font-medium text-foreground truncate max-w-[150px]">
+            {profileData.studioName}
+          </span>
+        )}
         
         {/* Notification Bell */}
-        {studioData && (
+        {studioData && studioData._id && (
           <PhotographerNotificationDropdown photographerId={studioData._id} />
         )}
         
-        <button
-          onClick={() => setShowProfile(true)}
-          className="p-0 hover:opacity-80 transition-opacity"
-        >
-          <Avatar>
-            <AvatarImage src={studioData?.image || undefined} />
-            <AvatarFallback className="bg-primary text-primary-foreground">
-              {getInitials()}
-            </AvatarFallback>
-          </Avatar>
-        </button>
-        <button 
-          onClick={handleLogout}
-          className="p-2 hover:bg-muted rounded-lg transition-colors"
-          title="Logout"
-        >
-          <LogOut size={20} className="text-foreground" />
-        </button>
-      </div>
-      
+        {/* User Profile Icon */}
+        <div className="relative">
+          <button
+            onClick={() => setShowProfile(true)}
+            className="p-1 hover:opacity-80 transition-opacity rounded-full"
+            title="User Profile"
+          >
+            <Avatar className="w-8 h-8">
+              <AvatarImage src={profileData.image || studioData?.image || undefined} />
+              <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                {getInitials()}
+              </AvatarFallback>
+            </Avatar>
+          </button>
 
+          {/* User Profile Dropdown */}
+          {showProfile && (
+            <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border py-2 z-50">
+              <div className="px-4 py-3 border-b">
+                <div className="flex items-center space-x-3">
+                  <Avatar className="w-10 h-10">
+                    <AvatarImage src={profileData.image || studioData?.image || undefined} />
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {getInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {profileData.name || getDisplayName()}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">{profileData.email}</p>
+                    {profileData.phone && (
+                      <p className="text-xs text-gray-500 truncate">{profileData.phone}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="py-1">
+                <button
+                  onClick={() => {
+                    setShowProfile(false);
+                    // Navigate to profile page
+                    router.push('/studio-dashboard#profile');
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                >
+                  <User className="h-4 w-4 mr-2" />
+                  Profile & Portfolio
+                </button>
+                <button
+                  onClick={() => {
+                    setShowProfile(false);
+                    setEditMode(true);
+                    // You can add any additional logic for updating profile here
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Update Profile
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Menu Button and Studio Name for mobile */}
+        <div className="md:hidden flex items-center gap-2">
+          {/* Studio Name for mobile */}
+          {profileData.studioName && (
+            <span className="text-sm font-medium text-foreground truncate max-w-[100px]">
+              {profileData.studioName}
+            </span>
+          )}
+          
+          {/* Mobile Menu Button */}
+          <button
+            className="p-1"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
+      </div>
 
       {/* Profile Modal */}
       {showProfile && (
@@ -231,6 +403,14 @@ export default function Header() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="studioName">Studio Name</Label>
+                    <Input
+                      id="studioName"
+                      value={profileData.studioName}
+                      onChange={(e) => setProfileData(prev => ({ ...prev, studioName: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="image">Profile Image URL</Label>
                     <Input
                       id="image"
@@ -250,8 +430,12 @@ export default function Header() {
               ) : (
                 <div className="space-y-3">
                   <div>
-                    <Label className="text-sm text-muted-foreground">Name</Label>
+                    <Label className="text-sm text-muted-foreground">Photographer Name</Label>
                     <p className="font-medium">{profileData.name || 'Not set'}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Studio Name</Label>
+                    <p className="font-medium">{profileData.studioName || 'Not set'}</p>
                   </div>
                   <div>
                     <Label className="text-sm text-muted-foreground">Email</Label>
@@ -263,7 +447,7 @@ export default function Header() {
                   </div>
                   <div>
                     <Label className="text-sm text-muted-foreground">Role</Label>
-                    <p className="font-medium">{studioData?.role === 'admin' ? 'Administrator' : 'Photographer'}</p>
+                    <p className="font-medium">{profileData.role}</p>
                   </div>
                 </div>
               )}

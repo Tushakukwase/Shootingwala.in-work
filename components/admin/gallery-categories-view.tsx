@@ -170,63 +170,40 @@ export default function GalleryCategoriesView({ onCategoryClick, onBack }: Galle
           <p className="text-gray-500">Create your first gallery to get started</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
           {groupedGalleries.map((group) => (
-            <Card 
+            <div 
               key={group.categoryName} 
-              className="cursor-pointer hover:shadow-lg transition-shadow"
+              className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex flex-col h-full cursor-pointer"
               onClick={() => onCategoryClick(group.categoryName, group.galleries)}
             >
-              <div className="relative h-48 bg-gray-100">
-                <img
-                  src={group.sampleImage}
-                  alt={group.categoryName}
-                  className="w-full h-full object-cover rounded-t-lg"
-                />
-                <div className="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-sm">
-                  {group.totalImages} images
+              <div className="flex flex-col h-full">
+                {/* Gallery Preview */}
+                <div className="mb-3">
+                  <img src={group.sampleImage} alt={group.categoryName} className="w-full h-32 object-cover rounded" />
                 </div>
-              </div>
-              
-              <CardContent className="p-4">
-                <h3 className="font-semibold text-lg mb-2">{group.categoryName}</h3>
                 
-                <div className="space-y-2 text-sm text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <ImageIcon className="w-4 h-4" />
-                    <span>{group.galleries.length} collection{group.galleries.length > 1 ? 's' : ''}</span>
+                <div className="flex-1 space-y-2">
+                  <h4 className="font-semibold text-sm truncate">{group.categoryName}</h4>
+                  
+                  <div className="text-xs text-gray-500 text-center">
+                    {group.totalImages} images from {group.galleries.length} collection{group.galleries.length > 1 ? 's' : ''}
                   </div>
                   
-                  <div className="flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    <span>
-                      {group.creators.length === 1 
-                        ? group.creators[0]
-                        : `${group.creators.length} creators`
-                      }
-                    </span>
+                  <div className="text-xs text-gray-500 text-center truncate">
+                    By {group.creators.length === 1 ? group.creators[0] : `${group.creators.length} creators`}
                   </div>
                 </div>
                 
-                <div className="mt-3 flex flex-wrap gap-1">
-                  {group.galleries.slice(0, 3).map((gallery) => (
-                    <div key={gallery.id} className="flex items-center gap-1">
-                      {getStatusBadge(gallery.status)}
-                    </div>
-                  ))}
-                  {group.galleries.length > 3 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{group.galleries.length - 3} more
-                    </Badge>
-                  )}
+                {/* View Button */}
+                <div className="mt-4">
+                  <Button className="w-full text-xs py-1" variant="outline">
+                    <Eye className="w-3 h-3 mr-1" />
+                    View All Images
+                  </Button>
                 </div>
-                
-                <Button className="w-full mt-3" variant="outline">
-                  <Eye className="w-4 h-4 mr-2" />
-                  View Category
-                </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}

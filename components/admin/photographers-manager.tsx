@@ -1,14 +1,11 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
-import NextImage from "next/image"
-import { Upload, X, Edit3, Trash2, Search, Plus, Users, CheckCircle } from "lucide-react"
+import { Plus, User, Mail, Phone, MapPin, Building2, Lock, Eye, EyeOff, Search, Edit, Trash2 } from "lucide-react"
 
 interface Photographer {
   _id: string
@@ -16,41 +13,28 @@ interface Photographer {
   email: string
   phone: string
   location: string
-  categories: string[]
-  image: string
-  description: string
-  experience: number
-  rating: number
-  isVerified: boolean
+  studioName: string
+  status: 'active' | 'inactive' | 'pending'
   isApproved: boolean
-  createdBy: 'admin' | 'self'
-  startingPrice: number
-  tags: string[]
   createdAt: string
 }
 
 export default function PhotographersManager() {
   const [photographers, setPhotographers] = useState<Photographer[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
   const [showAddForm, setShowAddForm] = useState(false)
-  const [editId, setEditId] = useState<string | null>(null)
-  const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'pending'>('all')
-  
-  // Form states
+  const [searchTerm, setSearchTerm] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    location: "",
-    categories: "",
-    image: null as string | null,
-    description: "",
-    experience: 0,
-    startingPrice: 200
+    name: '',
+    email: '',
+    phone: '',
+    location: '',
+    studioName: '',
+    password: ''
   })
-  
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [success, setSuccess] = useState('')
 
   useEffect(() => {
     fetchPhotographers()
@@ -58,549 +42,379 @@ export default function PhotographersManager() {
 
   const fetchPhotographers = async () => {
     try {
+      setLoading(true)
       const response = await fetch('/api/photographers')
       const data = await response.json()
-      setPhotographers(data.photographers || [])
-      setLoading(false)
-    } catch (error) {
-      // Silently handle error
-      setLoading(false)
-    }
-  }
-
-  const handleFileUpload = (file: File) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      setFormData(prev => ({ ...prev, image: e.target?.result as string }))
-    }
-    reader.readAsDataURL(file)
-  }
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      handleFileUpload(file)
-    }
-  }
-
-  const handleSubmit = async () => {
-    if (!formData.name.trim() || !formData.email.trim()) {
-      alert('Name and email are required')
-      return
-    }
-
-    try {
-      const photographerData = {
-        ...formData,
-        categories: formData.categories.split(',').map(cat => cat.trim()).filter(cat => cat),
-        tags: formData.categories.split(',').map(cat => cat.trim()).filter(cat => cat),
-        isVerified: false,
-        createdBy: 'admin'
-      }
-
-      const response = await fetch('/api/photographers', {
-        method: editId ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editId ? { ...photographerData, id: editId } : photographerData)
-      })
-
-      if (response.ok) {
-        await fetchPhotographers()
-        resetForm()
-        alert(editId ? 'Photographer updated successfully' : 'Photographer added successfully')
-      } else {
-        throw new Error('Failed to save photographer')
-      }
-    } catch (error) {
-      alert('Failed to save photographer')
-    }
-  }
-
-  const resetForm = () => {
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      location: "",
-      categories: "",
-      image: null,
-      description: "",
-      experience: 0,
-      startingPrice: 200
-    })
-    setShowAddForm(false)
-    setEditId(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
-    }
-  }
-
-  const startEdit = (photographer: Photographer) => {
-    setFormData({
-      name: photographer.name,
-      email: photographer.email,
-      phone: photographer.phone,
-      location: photographer.location,
-      categories: photographer.categories.join(', '),
-      image: photographer.image,
-      description: photographer.description,
-      experience: photographer.experience,
-      startingPrice: photographer.startingPrice || 200
-    })
-    setEditId(photographer._id)
-    setShowAddForm(true)
-  }
-
-  const handleApprove = async (photographerId: string) => {
-    try {
-      const response = await fetch(`/api/photographers/${photographerId}/approve`, {
-        method: 'PUT'
-      })
       
-      if (response.ok) {
-        await fetchPhotographers()
-        // Show success message
-        const successDiv = document.createElement('div')
-        successDiv.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50'
-        successDiv.textContent = '✓ Photographer approved! Now visible on Home Page and Dashboard.'
-        document.body.appendChild(successDiv)
-        setTimeout(() => document.body.removeChild(successDiv), 3000)
-      } else {
-        throw new Error('Failed to approve photographer')
+      if (data.success) {
+        setPhotographers(data.photographers || [])
       }
     } catch (error) {
-      alert('Failed to approve photographer')
+      console.error('Error fetching photographers:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleReject = async (photographerId: string) => {
-    if (confirm('Are you sure you want to revoke approval for this photographer? They will no longer appear on the Home Page and Dashboard.')) {
-      try {
-        const response = await fetch(`/api/photographers/${photographerId}/approve`, {
-          method: 'DELETE'
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.name.trim()) {
+      newErrors.name = "Photographer name is required"
+    }
+
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required"
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email"
+    }
+
+    if (!formData.phone.trim()) {
+      newErrors.phone = "Phone number is required"
+    }
+
+    if (!formData.location.trim()) {
+      newErrors.location = "Location is required"
+    }
+
+    if (!formData.studioName.trim()) {
+      newErrors.studioName = "Studio name is required"
+    }
+
+    if (!formData.password.trim()) {
+      newErrors.password = "Password is required"
+    } else if (formData.password.length < 6) {
+      newErrors.password = "Password must be at least 6 characters"
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!validateForm()) return
+
+    try {
+      const response = await fetch('/api/admin/create-photographer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          location: formData.location,
+          studioName: formData.studioName,
+          password: formData.password,
+          isApproved: true,
+          status: 'active',
+          createdBy: 'admin'
         })
-        
-        if (response.ok) {
-          await fetchPhotographers()
-          // Show warning message
-          const warningDiv = document.createElement('div')
-          warningDiv.className = 'fixed top-4 right-4 bg-orange-500 text-white px-6 py-3 rounded-lg shadow-lg z-50'
-          warningDiv.textContent = '⚠ Photographer approval revoked. No longer visible to users.'
-          document.body.appendChild(warningDiv)
-          setTimeout(() => document.body.removeChild(warningDiv), 3000)
-        } else {
-          throw new Error('Failed to reject photographer')
-        }
-      } catch (error) {
-        alert('Failed to reject photographer')
-      }
-    }
-  }
+      })
 
-  const deletePhotographer = async (id: string) => {
-    if (confirm('Are you sure you want to delete this photographer?')) {
-      try {
-        const response = await fetch('/api/photographers', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id })
+      const data = await response.json()
+
+      if (data.success) {
+        setSuccess('Photographer created successfully!')
+        setFormData({
+          name: '',
+          email: '',
+          phone: '',
+          location: '',
+          studioName: '',
+          password: ''
         })
-
-        if (response.ok) {
-          await fetchPhotographers()
-          alert('Photographer deleted successfully')
-        } else {
-          throw new Error('Failed to delete photographer')
-        }
-      } catch (error) {
-        alert('Failed to delete photographer')
+        setShowAddForm(false)
+        fetchPhotographers()
+        setTimeout(() => setSuccess(''), 3000)
+      } else {
+        setErrors({ general: data.error || 'Failed to create photographer' })
       }
+    } catch (error) {
+      setErrors({ general: 'Network error. Please try again.' })
     }
   }
 
-  const filteredPhotographers = photographers.filter(photographer => {
-    const matchesSearch = photographer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      photographer.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      photographer.categories.some(cat => cat.toLowerCase().includes(searchTerm.toLowerCase()))
-    
-    const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'approved' && photographer.isApproved) ||
-      (statusFilter === 'pending' && !photographer.isApproved)
-    
-    return matchesSearch && matchesStatus
-  })
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }))
+    }
+  }
+
+  const filteredPhotographers = photographers.filter(photographer =>
+    photographer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    photographer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    photographer.location.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
+  const getStatusBadge = (photographer: Photographer) => {
+    if (!photographer.isApproved) {
+      return <Badge variant="outline" className="bg-yellow-100 text-yellow-800">Pending</Badge>
+    }
+    if (photographer.status === 'active') {
+      return <Badge className="bg-green-100 text-green-800">Active</Badge>
+    }
+    return <Badge variant="outline" className="bg-gray-100 text-gray-800">Inactive</Badge>
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 p-4">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center gap-3 bg-white/80 backdrop-blur-sm px-6 py-3 rounded-full shadow-lg">
-            <Users className="w-6 h-6 text-green-600" />
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-              Photographers Management
-            </h1>
-          </div>
-          <p className="text-gray-600 max-w-2xl mx-auto">
-            Manage photographer profiles, verify accounts, and organize your photography network
-          </p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Photographers Management</h2>
+          <p className="text-muted-foreground">Manage photographer accounts and create new ones</p>
         </div>
+        <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Add New Photographer
+        </Button>
+      </div>
 
-        {/* Add/Edit Form */}
-        {showAddForm && (
-          <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-green-500 to-blue-500 text-white">
-              <CardTitle className="flex items-center gap-2">
-                <Plus className="w-5 h-5" />
-                {editId ? 'Edit Photographer' : 'Add New Photographer'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="name">Full Name *</Label>
-                    <Input
-                      id="name"
-                      value={formData.name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                      placeholder="Enter photographer's full name"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email *</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                      placeholder="Enter email address"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                      placeholder="Enter phone number"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="location">Location</Label>
-                    <Input
-                      id="location"
-                      value={formData.location}
-                      onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-                      placeholder="Enter location/city"
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="categories">Categories (comma separated)</Label>
-                    <Input
-                      id="categories"
-                      value={formData.categories}
-                      onChange={(e) => setFormData(prev => ({ ...prev, categories: e.target.value }))}
-                      placeholder="Wedding, Portrait, Event"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="experience">Experience (years)</Label>
-                    <Input
-                      id="experience"
-                      type="number"
-                      value={formData.experience}
-                      onChange={(e) => setFormData(prev => ({ ...prev, experience: parseInt(e.target.value) || 0 }))}
-                      placeholder="Years of experience"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="startingPrice">Starting Price ($)</Label>
-                    <Input
-                      id="startingPrice"
-                      type="number"
-                      min="0"
-                      value={formData.startingPrice}
-                      onChange={(e) => setFormData(prev => ({ ...prev, startingPrice: parseInt(e.target.value) || 200 }))}
-                      placeholder="Starting price"
-                    />
-                  </div>
-                  <div>
-                    <Label>Profile Image</Label>
-                    <div className="flex items-center gap-4">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        Upload Image
-                      </Button>
-                      {formData.image && (
-                        <div className="w-16 h-16 rounded-lg overflow-hidden">
-                          <NextImage
-                            src={formData.image}
-                            alt="Preview"
-                            width={64}
-                            height={64}
-                            className="object-cover"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+      {/* Success Message */}
+      {success && (
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+          {success}
+        </div>
+      )}
+
+      {/* Add Photographer Form */}
+      {showAddForm && (
+        <Card className="border-2 border-blue-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Add New Photographer
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {errors.general && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                {errors.general}
               </div>
-              
+            )}
+
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Photographer Name */}
               <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Brief description about the photographer"
-                  rows={3}
-                />
+                <label className="block text-sm font-medium mb-2">Photographer Name</label>
+                <div className="relative">
+                  <User className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                  <Input
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Enter photographer name"
+                    className="pl-10"
+                  />
+                </div>
+                {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
               </div>
 
-              <div className="flex gap-4">
-                <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700">
-                  {editId ? 'Update Photographer' : 'Add Photographer'}
+              {/* Email */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                  <Input
+                    name="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    placeholder="photographer@example.com"
+                    className="pl-10"
+                  />
+                </div>
+                {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Phone Number</label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                  <Input
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    placeholder="+91 9876543210"
+                    className="pl-10"
+                  />
+                </div>
+                {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Location</label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                  <Input
+                    name="location"
+                    value={formData.location}
+                    onChange={handleInputChange}
+                    placeholder="City, State"
+                    className="pl-10"
+                  />
+                </div>
+                {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location}</p>}
+              </div>
+
+              {/* Studio Name */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Studio Name</label>
+                <div className="relative">
+                  <Building2 className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                  <Input
+                    name="studioName"
+                    value={formData.studioName}
+                    onChange={handleInputChange}
+                    placeholder="Studio Name"
+                    className="pl-10"
+                  />
+                </div>
+                {errors.studioName && <p className="text-red-500 text-sm mt-1">{errors.studioName}</p>}
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 w-4 h-4 text-gray-400" />
+                  <Input
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="Create password"
+                    className="pl-10 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+              </div>
+
+              {/* Form Actions */}
+              <div className="md:col-span-2 flex gap-4 pt-4">
+                <Button type="submit" className="flex-1">
+                  Create Photographer Account
                 </Button>
-                <Button onClick={resetForm} variant="outline">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowAddForm(false)
+                    setFormData({
+                      name: '',
+                      email: '',
+                      phone: '',
+                      location: '',
+                      studioName: '',
+                      password: ''
+                    })
+                    setErrors({})
+                  }}
+                  className="flex-1"
+                >
                   Cancel
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="bg-green-50 border-green-200">
-            <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-green-600">
-                {photographers.filter(p => p.isApproved).length}
-              </div>
-              <div className="text-sm text-green-700 font-medium">Approved Photographers</div>
-              <div className="text-xs text-green-600 mt-1">Visible to users</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-orange-50 border-orange-200">
-            <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-orange-600">
-                {photographers.filter(p => !p.isApproved).length}
-              </div>
-              <div className="text-sm text-orange-700 font-medium">Pending Approval</div>
-              <div className="text-xs text-orange-600 mt-1">Awaiting review</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-blue-50 border-blue-200">
-            <CardContent className="p-6 text-center">
-              <div className="text-3xl font-bold text-blue-600">
-                {photographers.length}
-              </div>
-              <div className="text-sm text-blue-700 font-medium">Total Photographers</div>
-              <div className="text-xs text-blue-600 mt-1">All registered</div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Photographers List */}
-        <Card className="shadow-2xl border-0 bg-white/90 backdrop-blur-sm">
-          <CardHeader className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Users className="w-5 h-5" />
-                Photographers ({filteredPhotographers.length})
-              </CardTitle>
-              <div className="flex items-center gap-4">
-                <div className="flex gap-2">
-                  <Button
-                    variant={statusFilter === 'all' ? 'secondary' : 'outline'}
-                    size="sm"
-                    onClick={() => setStatusFilter('all')}
-                    className={statusFilter === 'all' ? 'bg-white/30 text-white' : 'border-white/30 text-white hover:bg-white/20'}
-                  >
-                    All ({photographers.length})
-                  </Button>
-                  <Button
-                    variant={statusFilter === 'approved' ? 'secondary' : 'outline'}
-                    size="sm"
-                    onClick={() => setStatusFilter('approved')}
-                    className={statusFilter === 'approved' ? 'bg-white/30 text-white' : 'border-white/30 text-white hover:bg-white/20'}
-                  >
-                    Approved ({photographers.filter(p => p.isApproved).length})
-                  </Button>
-                  <Button
-                    variant={statusFilter === 'pending' ? 'secondary' : 'outline'}
-                    size="sm"
-                    onClick={() => setStatusFilter('pending')}
-                    className={statusFilter === 'pending' ? 'bg-white/30 text-white' : 'border-white/30 text-white hover:bg-white/20'}
-                  >
-                    Pending ({photographers.filter(p => !p.isApproved).length})
-                  </Button>
-                </div>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/70 w-4 h-4" />
-                  <Input
-                    type="text"
-                    placeholder="Search photographers..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 h-9 bg-white/20 border-white/30 text-white placeholder:text-white/70 focus:bg-white/30"
-                  />
-                </div>
-                <Button
-                  onClick={() => setShowAddForm(true)}
-                  variant="outline"
-                  className="border-white/30 text-white hover:bg-white/20"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add New
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            {loading ? (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="text-gray-500 mt-4">Loading photographers...</p>
-              </div>
-            ) : filteredPhotographers.length === 0 ? (
-              <div className="text-center py-12">
-                <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 text-lg">No photographers found</p>
-                <p className="text-gray-400">Add your first photographer to get started</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredPhotographers.map((photographer) => (
-                  <Card key={photographer._id} className="group hover:shadow-xl transition-all duration-300 transform hover:scale-105">
-                    <CardContent className="p-4">
-                      <div className="flex items-start space-x-4">
-                        <div className="relative">
-                          <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100">
-                            {photographer.image ? (
-                              <NextImage
-                                src={photographer.image}
-                                alt={photographer.name}
-                                width={64}
-                                height={64}
-                                className="object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Users className="w-8 h-8 text-gray-400" />
-                              </div>
-                            )}
-                          </div>
-                          {photographer.isVerified && (
-                            <CheckCircle className="absolute -top-1 -right-1 w-5 h-5 text-green-500 bg-white rounded-full" />
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-gray-900 truncate">{photographer.name}</h3>
-                            <Badge 
-                              variant={photographer.createdBy === 'admin' ? 'default' : 'secondary'}
-                              className="text-xs"
-                            >
-                              {photographer.createdBy === 'admin' ? 'Admin' : 'Self-Reg'}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-gray-500">{photographer.location}</p>
-                          <p className="text-sm text-gray-500">{photographer.experience} years exp</p>
-                          <div className="flex items-center gap-1 mt-2">
-                            <Badge 
-                              variant={photographer.isApproved ? 'default' : 'destructive'}
-                              className={`text-xs ${photographer.isApproved ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-                            >
-                              {photographer.isApproved ? '✓ Approved' : '⏳ Pending Approval'}
-                            </Badge>
-                            {photographer.rating > 0 && (
-                              <Badge variant="outline" className="text-xs">
-                                ⭐ {photographer.rating.toFixed(1)}
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1 mt-1">
-                            {photographer.categories.slice(0, 2).map((category, index) => (
-                              <Badge key={index} variant="outline" className="text-xs">
-                                {category}
-                              </Badge>
-                            ))}
-                            {photographer.categories.length > 2 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{photographer.categories.length - 2}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <div className="flex flex-col gap-2">
-                          {!photographer.isApproved && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleApprove(photographer._id)}
-                              className="text-green-600 border-green-200 hover:bg-green-50"
-                            >
-                              ✓ Approve
-                            </Button>
-                          )}
-                          {photographer.isApproved && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleReject(photographer._id)}
-                              className="text-orange-600 border-orange-200 hover:bg-orange-50"
-                            >
-                              ✗ Revoke
-                            </Button>
-                          )}
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => startEdit(photographer)}
-                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                          >
-                            <Edit3 className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => deletePhotographer(photographer._id)}
-                            className="text-red-600 border-red-200 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </div>
-                      
-                      {photographer.description && (
-                        <p className="text-sm text-gray-600 mt-3 line-clamp-2">{photographer.description}</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+            </form>
           </CardContent>
         </Card>
+      )}
+
+      {/* Search */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            placeholder="Search photographers..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Badge variant="outline">{filteredPhotographers.length} photographers</Badge>
       </div>
+
+      {/* Photographers List */}
+      <Card>
+        <CardHeader>
+          <CardTitle>All Photographers</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-muted-foreground mt-2">Loading photographers...</p>
+            </div>
+          ) : filteredPhotographers.length === 0 ? (
+            <div className="text-center py-8">
+              <User className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">No Photographers Found</h3>
+              <p className="text-gray-500 mb-4">
+                {searchTerm ? 'No photographers match your search.' : 'No photographers have been added yet.'}
+              </p>
+              {!searchTerm && (
+                <Button onClick={() => setShowAddForm(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add First Photographer
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredPhotographers.map((photographer) => (
+                <div key={photographer._id} className="border rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="font-semibold text-lg">{photographer.name}</h3>
+                        {getStatusBadge(photographer)}
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm text-gray-600">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4" />
+                          <span>{photographer.email}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4" />
+                          <span>{photographer.phone}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />
+                          <span>{photographer.location}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
+                        <Building2 className="w-4 h-4" />
+                        <span>{photographer.studioName}</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm">
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -1,13 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Image as ImageIcon, User } from "lucide-react"
+import { ArrowLeft, Image as ImageIcon, User, Search } from "lucide-react"
 import NextImage from "next/image"
 import Link from "next/link"
+import ClientCache from "@/lib/cache-utils"
 
 interface GalleryCategory {
   name: string
@@ -20,15 +21,68 @@ interface GalleryCategory {
 export default function GalleryListPage() {
   const router = useRouter()
   const [galleryCategories, setGalleryCategories] = useState<GalleryCategory[]>([])
+  const [filteredCategories, setFilteredCategories] = useState<GalleryCategory[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
+  
+  // Scroll position preservation
+  const scrollPositions = useRef<Record<string, number>>({
+    window: 0
+  });
+
+  // Save scroll positions before component unmounts
+  useEffect(() => {
+    const saveScrollPositions = () => {
+      scrollPositions.current = {
+        window: window.scrollY
+      };
+    };
+
+    // Save positions when navigating away
+    window.addEventListener('beforeunload', saveScrollPositions);
+    
+    return () => {
+      window.removeEventListener('beforeunload', saveScrollPositions);
+    };
+  }, []);
+
+  // Restore scroll positions after component mounts
+  useEffect(() => {
+    // Restore scroll positions
+    if (scrollPositions.current.window > 0) {
+      window.scrollTo(0, scrollPositions.current.window);
+    }
+  }, []);
 
   useEffect(() => {
     loadGalleryCategories()
   }, [])
 
+  // Filter categories based on search query
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredCategories(galleryCategories)
+    } else {
+      const filtered = galleryCategories.filter(category => 
+        category.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+      setFilteredCategories(filtered)
+    }
+  }, [searchQuery, galleryCategories])
+
   const loadGalleryCategories = async () => {
     try {
       setLoading(true)
+      setError(null)
+      
+      // Check cache first
+      const cacheKey = 'gallery-categories'
+      const cachedData = ClientCache.get(cacheKey)
+      if (cachedData) {
+        setGalleryCategories(Array.isArray(cachedData) ? cachedData : [])
+        return
+      }
       
       // Fetch both admin galleries and photographer galleries
       const [adminImagesRes, adminCategoriesRes, photographerGalleriesRes] = await Promise.all([
@@ -58,10 +112,10 @@ export default function GalleryListPage() {
         })
       }
       
-      // Add approved photographer galleries
+      // Add photographer galleries (remove the showOnHome filter)
       if (photographerGalleriesData.success && photographerGalleriesData.galleries) {
         photographerGalleriesData.galleries
-          .filter((gallery: any) => gallery.status === 'approved' && gallery.showOnHome)
+          .filter((gallery: any) => gallery.status === 'approved') // Only filter by approved status
           .forEach((gallery: any) => {
             if (gallery.images && gallery.images.length > 0) {
               if (!allGalleryData[gallery.name]) {
@@ -83,12 +137,23 @@ export default function GalleryListPage() {
       }))
       
       setGalleryCategories(groupedGalleries)
+      setFilteredCategories(groupedGalleries)
       
-    } catch (error) {
+      // Cache the data for 5 minutes
+      ClientCache.set(cacheKey, groupedGalleries, 5 * 60 * 1000)
+      
+    } catch (error: any) {
       console.error('Error loading gallery categories:', error)
+      setError(error.message || 'Failed to load gallery categories')
+      setGalleryCategories([]) // Ensure it's always an array
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    // Filtering is handled by the useEffect above
   }
 
   if (loading) {
@@ -102,12 +167,29 @@ export default function GalleryListPage() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="max-w-md w-full mx-4">
+          <CardContent className="p-8 text-center">
+            <ImageIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Galleries Unavailable</h2>
+            <p className="text-gray-600 mb-6">{error}</p>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-4">
               <Button 
                 variant="outline" 
@@ -124,15 +206,40 @@ export default function GalleryListPage() {
             </div>
             <Badge variant="outline" className="flex items-center gap-1">
               <ImageIcon className="w-3 h-3" />
-              {galleryCategories.length} collections
+              {Array.isArray(filteredCategories) ? filteredCategories.length : 0} collections
             </Badge>
+          </div>
+          
+          {/* Search Bar - Only for Gallery Page */}
+          <div className="mt-6">
+            <form onSubmit={handleSearch} className="max-w-md">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search galleries..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </form>
           </div>
         </div>
       </div>
 
       {/* Gallery Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {galleryCategories.length === 0 ? (
+        {!Array.isArray(filteredCategories) || filteredCategories.length === 0 ? (
           <div className="text-center py-12">
             <ImageIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-gray-900 mb-2">No Galleries Available</h2>
@@ -140,7 +247,7 @@ export default function GalleryListPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {galleryCategories.map((category, index) => (
+            {filteredCategories.map((category, index) => (
               <Link
                 key={index}
                 href={`/gallery/${encodeURIComponent(category.name.toLowerCase().replace(/\s+/g, '-'))}`}

@@ -38,6 +38,7 @@ export async function GET() {
     const client = await clientPromise;
     const db = client.db('photobook');
     const cities = db.collection('cities');
+    // Return all cities from the cities collection (all are admin-approved)
     const all = await cities.find({}).toArray();
     return NextResponse.json({ cities: all });
   } catch (error) {

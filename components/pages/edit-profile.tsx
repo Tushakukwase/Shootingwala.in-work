@@ -137,6 +137,8 @@ export default function EditProfile() {
         categories: formData.categories.split(",").map(cat => cat.trim()).filter(cat => cat.length > 0)
       }
       
+      console.log('Updating photographer profile:', JSON.stringify(updateData, null, 2))
+      
       const response = await fetch('/api/photographer/profile', {
         method: 'PUT',
         headers: {
@@ -146,6 +148,7 @@ export default function EditProfile() {
       })
       
       const data = await response.json()
+      console.log('API response:', data)
       
       if (data.success) {
         setSuccess("Profile updated successfully!")
@@ -161,6 +164,7 @@ export default function EditProfile() {
           localStorage.setItem('studio', JSON.stringify(studio))
         }
       } else {
+        console.error('API error:', data.error)
         setError(data.error || "Failed to update profile")
       }
     } catch (error) {

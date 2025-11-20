@@ -36,6 +36,8 @@ export default function EnhancedStoriesManager() {
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showDetailModal, setShowDetailModal] = useState(false)
+  const [selectedStory, setSelectedStory] = useState<Story | null>(null)
   const [editingStory, setEditingStory] = useState<Story | null>(null)
   const [uploading, setUploading] = useState(false)
   const [newStory, setNewStory] = useState({
@@ -333,9 +335,6 @@ export default function EnhancedStoriesManager() {
           <CardTitle className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-green-600" />
             Real Stories Management
-            {pendingCount > 0 && (
-              <Badge variant="destructive">{pendingCount} Pending</Badge>
-            )}
           </CardTitle>
           <Button onClick={() => setShowAddModal(true)} className="bg-primary text-primary-foreground">
             <Plus className="w-4 h-4 mr-2" />
@@ -343,15 +342,33 @@ export default function EnhancedStoriesManager() {
           </Button>
         </div>
         
+        {/* Count Boxes */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+          <div className="bg-white rounded-lg p-4 text-center shadow-sm border">
+            <div className="text-3xl font-bold text-black mb-1">{totalCount}</div>
+            <div className="text-sm text-gray-600">Total Suggestions</div>
+          </div>
+          <div className="bg-white rounded-lg p-4 text-center shadow-sm border">
+            <div className="text-3xl font-bold text-orange-500 mb-1">{pendingCount}</div>
+            <div className="text-sm text-gray-600">Pending Review</div>
+          </div>
+          <div className="bg-white rounded-lg p-4 text-center shadow-sm border">
+            <div className="text-3xl font-bold text-green-600 mb-1">{visibleStories.filter(s => s.status === 'approved').length}</div>
+            <div className="text-sm text-gray-600">Approved</div>
+          </div>
+          <div className="bg-white rounded-lg p-4 text-center shadow-sm border">
+            <div className="text-3xl font-bold text-red-600 mb-1">{visibleStories.filter(s => s.status === 'rejected').length}</div>
+            <div className="text-sm text-gray-600">Rejected</div>
+          </div>
+        </div>
+        
         {/* Filter Tabs */}
-        <div className="flex flex-wrap gap-1 bg-muted p-1 rounded-lg">
+        <div className="flex flex-wrap gap-1 bg-muted p-1 rounded-lg mt-4">
           {[
             { key: 'all', label: `All (${totalCount})` },
             { key: 'pending', label: `Pending (${pendingCount})` },
             { key: 'approved', label: `Approved (${visibleStories.filter(s => s.status === 'approved').length})` },
-            { key: 'rejected', label: `Rejected (${visibleStories.filter(s => s.status === 'rejected').length})` },
-            { key: 'admin', label: `Admin (${visibleStories.filter(s => s.created_by === 'admin' || s.photographerId === 'admin').length})` },
-            { key: 'photographer', label: `Photographer (${visibleStories.filter(s => s.status !== 'draft' && (s.created_by === 'photographer' || (s.photographerId && s.photographerId !== 'admin'))).length})` }
+            { key: 'rejected', label: `Rejected (${visibleStories.filter(s => s.status === 'rejected').length})` }
           ].map(tab => (
             <button
               key={tab.key}
@@ -383,14 +400,19 @@ export default function EnhancedStoriesManager() {
                 ? "No stories are pending approval."
                 : filter === 'approved'
                 ? "No stories have been approved yet."
+                : filter === 'rejected'
+                ? "No stories have been rejected."
                 : "No stories have been created yet."
               }
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {filteredStories.map((story) => (
-              <div key={story.id} className="border border-gray-200 rounded-lg p-4 bg-white">
+              <div 
+                key={story.id} 
+                className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-lg hover:scale-[1.02] transition-all duration-200 flex flex-col h-full"
+              >
                 <div className="flex flex-col h-full">
                   {/* Story Cover Image */}
                   <div className="mb-3">
@@ -403,45 +425,40 @@ export default function EnhancedStoriesManager() {
                     )}
                   </div>
                   
-                  <div className="flex-1">
-                    <div className="flex items-center gap-1 mb-2 flex-wrap">
-                      <h4 className="font-semibold text-sm truncate">{story.title}</h4>
+                  <div className="flex-1 space-y-2">
+                    <h4 className="font-semibold text-sm truncate">{story.title}</h4>
+                    
+                    <div className="flex justify-center">
                       {getStatusBadge(story.status)}
                     </div>
                     
-                    <div className="mb-2">
-                      {story.showOnHome ? (
-                        <Badge className="bg-green-100 text-green-800 text-xs">
-                          <Eye className="w-3 h-3 mr-1" />
-                          On Homepage
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-gray-100 text-gray-600 text-xs">
-                          Not on Homepage
-                        </Badge>
-                      )}
-                    </div>
-                      
-                    <p className="text-xs text-gray-600 mb-2 line-clamp-2">{story.content}</p>
-                    
-                    <div className="text-xs text-gray-600 mb-2">
-                      <div className="flex items-center gap-1 mb-1">
-                        <User className="w-3 h-3" />
-                        <span className="truncate">{story.created_by_name || story.photographerName || 'Unknown'}</span>
-                      </div>
-                      {story.location && (
-                        <div className="truncate">📍 {story.location}</div>
-                      )}
+                    <div className="text-xs text-gray-500 text-center">
+                      {new Date(story.createdAt).toLocaleDateString()}
                     </div>
                   </div>
                   
-                  <div className="flex gap-1 flex-wrap mt-auto">
+                  {/* Action Buttons */}
+                  <div className="flex gap-1 flex-wrap mt-4">
+                    {/* View Details Button */}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs px-2 py-1 flex-1"
+                      onClick={() => {
+                        setSelectedStory(story)
+                        setShowDetailModal(true)
+                      }}
+                      title="View Details"
+                    >
+                      <Eye className="w-3 h-3" />
+                    </Button>
+
                     {/* Approval/Rejection Buttons */}
                     {story.status === 'pending' && (
                       <>
                         <Button
                           size="sm"
-                          className="bg-green-600 hover:bg-green-700 text-xs px-2 py-1"
+                          className="bg-green-600 hover:bg-green-700 text-xs px-2 py-1 flex-1"
                           onClick={() => handleApprove(story.id)}
                           disabled={actionLoading === story.id}
                           title="Approve Story"
@@ -455,7 +472,7 @@ export default function EnhancedStoriesManager() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          className="text-xs px-2 py-1"
+                          className="text-xs px-2 py-1 flex-1"
                           onClick={() => handleReject(story.id)}
                           disabled={actionLoading === story.id}
                           title="Reject Story"
@@ -470,7 +487,7 @@ export default function EnhancedStoriesManager() {
                       <Button
                         size="sm"
                         variant="destructive"
-                        className="text-xs px-2 py-1"
+                        className="text-xs px-2 py-1 flex-1"
                         onClick={() => handleReject(story.id)}
                         disabled={actionLoading === story.id}
                         title="Reject Story"
@@ -482,7 +499,7 @@ export default function EnhancedStoriesManager() {
                     {story.status === 'rejected' && (
                       <Button
                         size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-xs px-2 py-1"
+                        className="bg-green-600 hover:bg-green-700 text-xs px-2 py-1 flex-1"
                         onClick={() => handleApprove(story.id)}
                         disabled={actionLoading === story.id}
                         title="Approve Story"
@@ -495,7 +512,7 @@ export default function EnhancedStoriesManager() {
                     {story.status === 'approved' && (
                       <Button
                         size="sm"
-                        className={story.showOnHome ? "bg-blue-600 hover:bg-blue-700 text-xs px-2 py-1" : "bg-gray-600 hover:bg-gray-700 text-xs px-2 py-1"}
+                        className={story.showOnHome ? "bg-blue-600 hover:bg-blue-700 text-xs px-2 py-1 flex-1" : "bg-gray-600 hover:bg-gray-700 text-xs px-2 py-1 flex-1"}
                         onClick={() => handleToggleHomepage(story.id, story.showOnHome)}
                         disabled={actionLoading === story.id}
                         title={story.showOnHome ? "Remove from Homepage" : "Show on Homepage"}
@@ -508,7 +525,7 @@ export default function EnhancedStoriesManager() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="text-xs px-2 py-1"
+                      className="text-xs px-2 py-1 flex-1"
                       onClick={() => {
                         setEditingStory(story)
                         setShowEditModal(true)
@@ -523,7 +540,7 @@ export default function EnhancedStoriesManager() {
                     <Button
                       size="sm"
                       variant="destructive"
-                      className="text-xs px-2 py-1"
+                      className="text-xs px-2 py-1 flex-1"
                       onClick={() => handleDelete(story.id)}
                       disabled={actionLoading === story.id}
                       title="Delete Story"
@@ -740,6 +757,203 @@ export default function EnhancedStoriesManager() {
               </Button>
               <Button variant="outline" onClick={() => setShowEditModal(false)} className="flex-1">
                 Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )}
+
+    {/* Story Detail Modal */}
+    {showDetailModal && selectedStory && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <Card className="w-full max-w-3xl max-h-[85vh] overflow-y-auto">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Eye className="w-5 h-5" />
+                Story Details - Review Request
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setShowDetailModal(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Photographer/Studio Information */}
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+              <h3 className="font-semibold text-blue-900 mb-2 flex items-center gap-2 text-sm">
+                <User className="w-4 h-4" />
+                Photographer/Studio Information
+              </h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="font-medium text-blue-800">Studio Name:</span>
+                  <p className="text-blue-700">{selectedStory.created_by_name || selectedStory.photographerName || 'Unknown Studio'}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-blue-800">Photographer ID:</span>
+                  <p className="text-blue-700 font-mono text-xs">{selectedStory.photographerId}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-blue-800">Request Date:</span>
+                  <p className="text-blue-700">{selectedStory.request_date ? new Date(selectedStory.request_date).toLocaleDateString() : new Date(selectedStory.createdAt).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-blue-800">Current Status:</span>
+                  <div className="mt-1">{getStatusBadge(selectedStory.status)}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Story Content Preview */}
+            <div className="bg-gray-50 p-3 rounded-lg border">
+              <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2 text-sm">
+                <FileText className="w-4 h-4" />
+                Story Content Preview
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Cover Image */}
+                {selectedStory.coverImage && (
+                  <div>
+                    <span className="font-medium text-gray-700 block mb-2 text-sm">Cover Image:</span>
+                    <img 
+                      src={selectedStory.coverImage} 
+                      alt={selectedStory.title}
+                      className="w-full h-32 object-cover rounded border"
+                    />
+                  </div>
+                )}
+
+                {/* Story Details */}
+                <div className="space-y-3">
+                  <div>
+                    <span className="font-medium text-gray-700 text-sm">Title:</span>
+                    <p className="text-gray-900 font-semibold">{selectedStory.title}</p>
+                  </div>
+                  
+                  {selectedStory.location && (
+                    <div>
+                      <span className="font-medium text-gray-700 text-sm">Location:</span>
+                      <p className="text-gray-900 text-sm">📍 {selectedStory.location}</p>
+                    </div>
+                  )}
+                  
+                  {selectedStory.date && (
+                    <div>
+                      <span className="font-medium text-gray-700 text-sm">Event Date:</span>
+                      <p className="text-gray-900 text-sm">📅 {new Date(selectedStory.date).toLocaleDateString()}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="mt-3">
+                <span className="font-medium text-gray-700 text-sm">Story Content:</span>
+                <div className="bg-white p-2 rounded border mt-1 max-h-32 overflow-y-auto">
+                  <p className="text-gray-900 text-sm leading-relaxed whitespace-pre-wrap">{selectedStory.content}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Approval History */}
+            {(selectedStory.approved_by || selectedStory.status !== 'pending') && (
+              <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                <h3 className="font-semibold text-yellow-900 mb-2 flex items-center gap-2 text-sm">
+                  <Calendar className="w-4 h-4" />
+                  Approval History
+                </h3>
+                <div className="text-sm space-y-2">
+                  {selectedStory.approved_by && (
+                    <div>
+                      <span className="font-medium text-yellow-800">Reviewed by:</span>
+                      <p className="text-yellow-700">{selectedStory.approved_by_name || selectedStory.approved_by}</p>
+                    </div>
+                  )}
+                  {selectedStory.approved_at && (
+                    <div>
+                      <span className="font-medium text-yellow-800">Review Date:</span>
+                      <p className="text-yellow-700">{new Date(selectedStory.approved_at).toLocaleDateString()}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-3 border-t">
+              {selectedStory.status === 'pending' && (
+                <>
+                  <Button
+                    className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                    onClick={() => {
+                      handleApprove(selectedStory.id)
+                      setShowDetailModal(false)
+                    }}
+                    disabled={actionLoading === selectedStory.id}
+                  >
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Approve Story
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => {
+                      handleReject(selectedStory.id)
+                      setShowDetailModal(false)
+                    }}
+                    disabled={actionLoading === selectedStory.id}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Reject Story
+                  </Button>
+                </>
+              )}
+              
+              {selectedStory.status === 'approved' && (
+                <>
+                  <Button
+                    className={selectedStory.showOnHome ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-600 hover:bg-gray-700"}
+                    onClick={() => {
+                      handleToggleHomepage(selectedStory.id, selectedStory.showOnHome)
+                      setShowDetailModal(false)
+                    }}
+                    disabled={actionLoading === selectedStory.id}
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    {selectedStory.showOnHome ? 'Remove from Homepage' : 'Show on Homepage'}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      handleReject(selectedStory.id)
+                      setShowDetailModal(false)
+                    }}
+                    disabled={actionLoading === selectedStory.id}
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    Reject Story
+                  </Button>
+                </>
+              )}
+              
+              {selectedStory.status === 'rejected' && (
+                <Button
+                  className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                  onClick={() => {
+                    handleApprove(selectedStory.id)
+                    setShowDetailModal(false)
+                  }}
+                  disabled={actionLoading === selectedStory.id}
+                >
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Approve Story
+                </Button>
+              )}
+              
+              <Button variant="outline" onClick={() => setShowDetailModal(false)}>
+                Close
               </Button>
             </div>
           </CardContent>

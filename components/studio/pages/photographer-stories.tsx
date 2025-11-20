@@ -227,7 +227,7 @@ export default function PhotographerStories() {
 
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-foreground">Real Wedding Stories</h1>
         <Button onClick={() => setShowAddModal(true)} className="bg-primary text-primary-foreground">
@@ -284,14 +284,14 @@ export default function PhotographerStories() {
                       <div className="p-4">
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="font-semibold text-sm">{story.title}</h3>
-                          {story.status === 'draft' && (
-                            <Badge className="bg-gray-100 text-gray-800">
-                              Draft
-                            </Badge>
-                          )}
                           {story.status === 'pending' && (
                             <Badge className="bg-yellow-100 text-yellow-800">
                               Pending Approval
+                            </Badge>
+                          )}
+                          {story.status === 'approved' && !story.showOnHome && (
+                            <Badge className="bg-green-100 text-green-800">
+                              Approved
                             </Badge>
                           )}
                           {story.status === 'approved' && story.showOnHome && (
@@ -325,11 +325,7 @@ export default function PhotographerStories() {
                             <Edit className="w-3 h-3 mr-1" />Edit
                           </Button>
                           
-                          {story.status === 'draft' ? (
-                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => requestHomepageDisplay(story.id)}>
-                              Request Homepage Feature
-                            </Button>
-                          ) : story.status === 'pending' ? (
+                          {story.status === 'pending' ? (
                             <Button size="sm" variant="outline" disabled className="bg-yellow-100 text-yellow-800">
                               Request Pending...
                             </Button>

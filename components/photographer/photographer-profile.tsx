@@ -2,16 +2,16 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { 
-  MapPin, 
-  Star, 
-  Calendar, 
-  Phone, 
-  Mail, 
-  Instagram, 
-  Facebook, 
-  Camera, 
-  Award, 
+import {
+  MapPin,
+  Star,
+  Calendar,
+  Phone,
+  Mail,
+  Instagram,
+  Facebook,
+  Camera,
+  Award,
   Clock,
   Users,
   Heart,
@@ -35,18 +35,27 @@ import PhotographerAvailability from "./photographer-availability"
 import PhotographerContact from "./photographer-contact"
 import SimilarPhotographers from "./similar-photographers"
 import StickyBookButton from "./sticky-book-button"
+import ClientCache from "@/lib/cache-utils"
 
 interface PhotographerData {
   id: string
   name: string
+  studioName?: string
   profilePhoto: string
+  studioBannerImage?: string
   isVerified: boolean
   location: string
   tagline: string
   bio: string
   experience: number
   specializations: string[]
-  awards: string[]
+  awards: (string | {
+    id?: string
+    title: string
+    image?: string
+    brief?: string
+    year?: string
+  })[]
   portfolio: {
     id: string
     type: 'photo' | 'video'
@@ -92,180 +101,81 @@ interface PhotographerData {
     yearsActive: number
     happyClients: number
   }
+  studioInfo?: {
+    studioName: string
+    studioAddress: string
+    studioCity: string
+    studioState: string
+    studioEstablished: string
+    studioTeamSize: number
+    studioServices: string[]
+    businessHours: any
+  }
 }
 
 interface PhotographerProfileProps {
   photographerId: string
+  isAdminView?: boolean // Add this prop to control back button visibility
 }
 
-export default function PhotographerProfile({ photographerId }: PhotographerProfileProps) {
+export default function PhotographerProfile({ photographerId, isAdminView = false }: PhotographerProfileProps) {
   const [photographer, setPhotographer] = useState<PhotographerData | null>(null)
   const [loading, setLoading] = useState(true)
   const [isLiked, setIsLiked] = useState(false)
   const [showBookingForm, setShowBookingForm] = useState(false)
 
-  useEffect(() => {
-    fetchPhotographerData()
-  }, [photographerId])
-
   const fetchPhotographerData = async () => {
     try {
       setLoading(true)
-      // For now, using mock data. Replace with actual API call
-      const mockData: PhotographerData = {
-        id: photographerId,
-        name: "Arjun Sharma",
-        profilePhoto: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
-        isVerified: true,
-        location: "Mumbai, Maharashtra",
-        tagline: "Capturing memories with creativity and passion",
-        bio: "Professional wedding and portrait photographer with over 8 years of experience. I specialize in candid photography that tells your unique story. My approach combines traditional techniques with modern creativity to deliver timeless memories.",
-        experience: 8,
-        specializations: ["Wedding Photography", "Pre-wedding Shoots", "Portrait Photography", "Event Photography", "Product Photography"],
-        awards: ["Best Wedding Photographer 2023", "Excellence in Portrait Photography", "Creative Photography Award"],
-        portfolio: [
-          {
-            id: "1",
-            type: "photo",
-            url: "https://images.unsplash.com/photo-1519741497674-611481863552?w=800&h=600&fit=crop",
-            thumbnail: "https://images.unsplash.com/photo-1519741497674-611481863552?w=400&h=300&fit=crop",
-            eventType: "Wedding",
-            location: "Goa",
-            title: "Beach Wedding Ceremony"
-          },
-          {
-            id: "2",
-            type: "photo",
-            url: "https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=800&h=600&fit=crop",
-            thumbnail: "https://images.unsplash.com/photo-1606216794074-735e91aa2c92?w=400&h=300&fit=crop",
-            eventType: "Pre-wedding",
-            location: "Udaipur",
-            title: "Royal Pre-wedding Shoot"
-          },
-          {
-            id: "3",
-            type: "photo",
-            url: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=800&h=600&fit=crop",
-            thumbnail: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=400&h=300&fit=crop",
-            eventType: "Portrait",
-            location: "Delhi",
-            title: "Professional Portrait Session"
-          },
-          {
-            id: "4",
-            type: "video",
-            url: "https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4",
-            thumbnail: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=400&h=300&fit=crop",
-            eventType: "Wedding",
-            location: "Jaipur",
-            title: "Wedding Highlights Reel"
-          },
-          {
-            id: "5",
-            type: "photo",
-            url: "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=800&h=600&fit=crop",
-            thumbnail: "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?w=400&h=300&fit=crop",
-            eventType: "Event",
-            location: "Bangalore",
-            title: "Corporate Event Coverage"
-          },
-          {
-            id: "6",
-            type: "photo",
-            url: "https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=800&h=600&fit=crop",
-            thumbnail: "https://images.unsplash.com/photo-1465495976277-4387d4b0e4a6?w=400&h=300&fit=crop",
-            eventType: "Product",
-            location: "Mumbai",
-            title: "Product Photography Session"
-          }
-        ],
-        packages: [
-          {
-            id: "basic",
-            name: "Basic Package",
-            price: 25000,
-            duration: "4 hours",
-            deliverables: ["150 edited photos", "Online gallery", "Basic retouching"],
-            features: ["4 hours coverage", "150+ edited photos", "Online gallery access", "Basic color correction", "48-hour delivery"]
-          },
-          {
-            id: "standard",
-            name: "Standard Package",
-            price: 45000,
-            duration: "8 hours",
-            deliverables: ["300 edited photos", "Cinematic video", "Premium editing"],
-            features: ["8 hours coverage", "300+ edited photos", "2-3 minute highlight video", "Premium editing", "Online gallery", "24-hour delivery"],
-            isPopular: true
-          },
-          {
-            id: "premium",
-            name: "Premium Package",
-            price: 75000,
-            duration: "Full day",
-            deliverables: ["500+ edited photos", "Cinematic video", "Same day editing", "Photo album"],
-            features: ["12+ hours coverage", "500+ edited photos", "5-7 minute cinematic video", "Same day preview", "Premium photo album", "Drone shots", "Multiple locations"]
-          }
-        ],
-        reviews: [
-          {
-            id: "1",
-            userName: "Priya & Rohit",
-            userAvatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face",
-            rating: 5,
-            comment: "Arjun captured our wedding beautifully! His candid shots are amazing and he made us feel so comfortable. Highly recommended!",
-            date: "2024-01-15",
-            eventType: "Wedding"
-          },
-          {
-            id: "2",
-            userName: "Sneha Patel",
-            userAvatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face",
-            rating: 5,
-            comment: "Professional and creative! Our pre-wedding shoot was absolutely perfect. The photos exceeded our expectations.",
-            date: "2024-01-10",
-            eventType: "Pre-wedding"
-          },
-          {
-            id: "3",
-            userName: "Rajesh Kumar",
-            userAvatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-            rating: 4,
-            comment: "Great work on our corporate event. Very professional and delivered on time. Will book again!",
-            date: "2024-01-05",
-            eventType: "Corporate Event"
-          }
-        ],
-        averageRating: 4.9,
-        totalReviews: 58,
-        availability: [
-          { date: "2024-02-15", isAvailable: true },
-          { date: "2024-02-16", isAvailable: false },
-          { date: "2024-02-17", isAvailable: true },
-          { date: "2024-02-18", isAvailable: true },
-          { date: "2024-02-19", isAvailable: false },
-          { date: "2024-02-20", isAvailable: true }
-        ],
-        contact: {
-          phone: "+91 98765 43210",
-          email: "arjun.sharma@example.com",
-          instagram: "@arjunphotography",
-          facebook: "arjunphotographyofficial",
-          website: "www.arjunphotography.com"
-        },
-        stats: {
-          totalBookings: 150,
-          yearsActive: 8,
-          happyClients: 145
-        }
+      console.log('Fetching photographer data for ID:', photographerId)
+
+      // Check if we have cached data
+      const cacheKey = `photographer-${photographerId}`
+      const cachedData = ClientCache.get(cacheKey)
+      if (cachedData) {
+        console.log('Using cached photographer data')
+        setPhotographer(cachedData)
+        return
       }
-      
-      setPhotographer(mockData)
+
+      // Try to fetch from API first
+      const response = await fetch(`/api/photographer/${photographerId}`)
+      console.log('API response status:', response.status)
+
+      if (!response.ok) {
+        console.error('API response not ok:', response.status, response.statusText)
+        return
+      }
+
+      const data = await response.json()
+      console.log('API response data:', data)
+
+      if (data.success && data.photographer) {
+        console.log('Setting photographer data:', data.photographer)
+        console.log('Photographer name:', data.photographer.name)
+        console.log('Photographer bio:', data.photographer.bio)
+        console.log('Portfolio items:', data.photographer.portfolio?.length || 0)
+        console.log('Packages:', data.photographer.packages?.length || 0)
+        
+        // Cache the data for 5 minutes
+        ClientCache.set(cacheKey, data.photographer, 5 * 60 * 1000)
+        setPhotographer(data.photographer)
+        return
+      } else {
+        console.error('API returned error:', data.error)
+      }
     } catch (error) {
       console.error("Error fetching photographer data:", error)
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    if (photographerId) {
+      fetchPhotographerData()
+    }
+  }, [photographerId])
 
   if (loading) {
     return (
@@ -280,59 +190,89 @@ export default function PhotographerProfile({ photographerId }: PhotographerProf
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Photographer not found</h1>
-          <Link href="/">
-            <Button>Go back home</Button>
-          </Link>
+          <p className="text-gray-600 mb-4">ID: {photographerId}</p>
+          <p className="text-sm text-gray-500 mb-4">
+            Check browser console for debugging information
+          </p>
+          {!isAdminView && (
+            <Link href="/">
+              <Button>Go back home</Button>
+            </Link>
+          )}
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Back Button */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Link href="/" className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to photographers
-          </Link>
+    <div className={isAdminView ? "bg-gray-50" : "min-h-screen bg-gray-50"}>
+      {/* Back Button - Only show if not in admin view */}
+      {!isAdminView && (
+        <div className="bg-white border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <Link href="/" className="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to photographers
+            </Link>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Header Section */}
-      <PhotographerHeader photographer={photographer} isLiked={isLiked} setIsLiked={setIsLiked} />
+      <PhotographerHeader photographer={{
+        name: photographer.name,
+        studioName: photographer.studioName || photographer.studioInfo?.studioName,
+        profilePhoto: photographer.profilePhoto,
+        studioBannerImage: photographer.studioBannerImage,
+        isVerified: photographer.isVerified,
+        location: photographer.location,
+        tagline: photographer.tagline,
+        averageRating: photographer.averageRating,
+        totalReviews: photographer.totalReviews,
+        stats: photographer.stats
+      }} isLiked={isLiked} setIsLiked={setIsLiked} />
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Main Content */}
           <div className="lg:col-span-2 space-y-8">
-            <PhotographerAbout photographer={photographer} />
-            <PhotographerPortfolio portfolio={photographer.portfolio} />
-            <PhotographerReviews 
-              reviews={photographer.reviews} 
+            <PhotographerAbout photographer={{
+              bio: photographer.bio || '',
+              experience: photographer.experience || 0,
+              specializations: photographer.specializations || [],
+              awards: photographer.awards || [],
+              studioInfo: photographer.studioInfo
+            }} />
+            <PhotographerPortfolio portfolio={photographer.portfolio || []} />
+            <PhotographerReviews
+              reviews={photographer.reviews}
               averageRating={photographer.averageRating}
               totalReviews={photographer.totalReviews}
+              photographerId={photographer.id}
             />
           </div>
 
           {/* Right Column - Sidebar */}
           <div className="space-y-6">
-            <PhotographerPackages packages={photographer.packages} />
+            <PhotographerContact contact={photographer.contact || {}} />
+            <PhotographerPackages packages={photographer.packages || []} />
             <PhotographerAvailability availability={photographer.availability} />
-            <PhotographerContact contact={photographer.contact} />
           </div>
         </div>
 
-        {/* Similar Photographers */}
-        <div className="mt-16">
-          <SimilarPhotographers currentPhotographerId={photographer.id} />
-        </div>
+        {/* Similar Photographers - Only show if not in admin view */}
+        {!isAdminView && (
+          <div className="mt-16">
+            <SimilarPhotographers currentPhotographerId={photographer.id} />
+          </div>
+        )}
       </div>
 
-      {/* Sticky Book Button */}
-      <StickyBookButton photographer={photographer} />
+      {/* Sticky Book Button - Only show if not in admin view */}
+      {!isAdminView && (
+        <StickyBookButton photographer={photographer} />
+      )}
     </div>
   )
 }

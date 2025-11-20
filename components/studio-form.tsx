@@ -5,15 +5,17 @@ import { useState } from "react"
 import { Eye, EyeOff, Mail, Lock, User, Phone, Building2 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import SocialButtons from "./social-buttons"
+import PasswordStrengthIndicator from "./password-strength-indicator"
 import OTPInput from "./otp-input"
 
 interface StudioFormProps {
   isLogin: boolean
   setIsLogin: (value: boolean) => void
-  onSwitchToUser: () => void
+  onSwitchToUser?: () => void
+  onSuccess?: () => void
 }
 
-export default function StudioForm({ isLogin, setIsLogin, onSwitchToUser }: StudioFormProps) {
+export default function StudioForm({ isLogin, setIsLogin, onSwitchToUser, onSuccess }: StudioFormProps) {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -25,18 +27,11 @@ export default function StudioForm({ isLogin, setIsLogin, onSwitchToUser }: Stud
     email: "",
     mobileNumber: "",
     password: "",
+    confirmPassword: "",
   })
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
-
-    if (!formData.studioName) {
-      newErrors.studioName = "Studio name is required"
-    }
-
-    if (!formData.photographerName) {
-      newErrors.photographerName = "Photographer name is required"
-    }
 
     if (!formData.email) {
       newErrors.email = "Email is required"
@@ -44,16 +39,33 @@ export default function StudioForm({ isLogin, setIsLogin, onSwitchToUser }: Stud
       newErrors.email = "Please enter a valid email"
     }
 
-    if (!formData.mobileNumber) {
-      newErrors.mobileNumber = "Mobile number is required"
-    } else if (!/^\d{10}$/.test(formData.mobileNumber.replace(/\D/g, ""))) {
-      newErrors.mobileNumber = "Please enter a valid 10-digit mobile number"
-    }
-
     if (!formData.password) {
       newErrors.password = "Password is required"
     } else if (!isLogin && formData.password.length < 6) {
       newErrors.password = "Password must be at least 6 characters"
+    }
+
+    // Only validate other fields for registration
+    if (!isLogin) {
+      if (!formData.studioName) {
+        newErrors.studioName = "Studio name is required"
+      }
+
+      if (!formData.photographerName) {
+        newErrors.photographerName = "Photographer name is required"
+      }
+
+      if (!formData.mobileNumber) {
+        newErrors.mobileNumber = "Mobile number is required"
+      } else if (!/^\d{10}$/.test(formData.mobileNumber.replace(/\D/g, ""))) {
+        newErrors.mobileNumber = "Please enter a valid 10-digit mobile number"
+      }
+
+      if (!formData.confirmPassword) {
+        newErrors.confirmPassword = "Please confirm your password"
+      } else if (formData.password !== formData.confirmPassword) {
+        newErrors.confirmPassword = "Passwords do not match"
+      }
     }
 
     setErrors(newErrors)
@@ -81,7 +93,7 @@ export default function StudioForm({ isLogin, setIsLogin, onSwitchToUser }: Stud
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            username: formData.email,
+            email: formData.email,
             password: formData.password,
           }),
         })
@@ -89,6 +101,9 @@ export default function StudioForm({ isLogin, setIsLogin, onSwitchToUser }: Stud
         const data = await response.json()
 
         if (data.success) {
+          // Set loading state to prevent UI flickering
+          setLoading(true)
+          
           // Store studio data in localStorage
           localStorage.setItem('studio', JSON.stringify(data.studio))
           
@@ -102,6 +117,11 @@ export default function StudioForm({ isLogin, setIsLogin, onSwitchToUser }: Stud
             userType: data.studio.role === 'admin' ? 'admin' : 'photographer',
             role: data.studio.role || 'photographer'
           })}; path=/; max-age=86400; SameSite=Strict`
+          
+          // Close modal if callback provided
+          if (onSuccess) {
+            onSuccess()
+          }
           
           // Check for redirect parameter
           const urlParams = new URLSearchParams(window.location.search)
@@ -121,6 +141,9 @@ export default function StudioForm({ isLogin, setIsLogin, onSwitchToUser }: Stud
           } else {
             router.push("/studio-dashboard")
           }
+          
+          // Prevent any further execution
+          return
         } else {
           setErrors({ general: data.error || "Login failed. Please try again." })
         }
@@ -167,16 +190,14 @@ export default function StudioForm({ isLogin, setIsLogin, onSwitchToUser }: Stud
     }
   }
 
-  // Demo login functions removed for security
-
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl p-8 space-y-6">
+    <div className="space-y-3">
       {/* Header */}
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+      <div className="text-center space-y-1">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
           {isLogin ? "Studio Login" : "Register Studio"}
         </h1>
-        <p className="text-slate-600 dark:text-slate-400">
+        <p className="text-sm text-slate-600 dark:text-slate-400">
           {isLogin ? "Access your studio account" : "Create your studio account"}
         </p>
       </div>
@@ -206,43 +227,8 @@ export default function StudioForm({ isLogin, setIsLogin, onSwitchToUser }: Stud
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Studio Name */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Studio Name</label>
-          <div className="relative">
-            <Building2 className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              name="studioName"
-              value={formData.studioName}
-              onChange={handleInputChange}
-              placeholder="Your Studio Name"
-              autoFocus
-              className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition"
-            />
-          </div>
-          {errors.studioName && <p className="text-red-500 text-sm mt-1">{errors.studioName}</p>}
-        </div>
-
-        {/* Photographer Name */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Photographer Name</label>
-          <div className="relative">
-            <User className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              name="photographerName"
-              value={formData.photographerName}
-              onChange={handleInputChange}
-              placeholder="Your Name"
-              className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition"
-            />
-          </div>
-          {errors.photographerName && <p className="text-red-500 text-sm mt-1">{errors.photographerName}</p>}
-        </div>
-
-        {/* Email */}
+      <form onSubmit={handleSubmit} className="space-y-3">
+        {/* Email - Always show first */}
         <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Email Address</label>
           <div className="relative">
@@ -252,53 +238,159 @@ export default function StudioForm({ isLogin, setIsLogin, onSwitchToUser }: Stud
               name="email"
               value={formData.email}
               onChange={handleInputChange}
-              placeholder="studio@example.com"
+              placeholder="photographer@example.com"
+              autoFocus={isLogin}
               className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition"
             />
           </div>
           {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
         </div>
 
-        {/* Mobile Number */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Mobile Number</label>
-          <div className="relative">
-            <Phone className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
-            <input
-              type="tel"
-              name="mobileNumber"
-              value={formData.mobileNumber}
-              onChange={handleInputChange}
-              placeholder="+1 (555) 000-0000"
-              className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition"
-            />
+        {/* Password - Show second for login only */}
+        {isLogin && (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Password</label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="••••••••"
+                className="w-full pl-10 pr-10 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
           </div>
-          {errors.mobileNumber && <p className="text-red-500 text-sm mt-1">{errors.mobileNumber}</p>}
-        </div>
+        )}
 
-        {/* Password (Always show for both login and signup) */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Password</label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
-            <input
-              type={showPassword ? "text" : "password"}
-              name="password"
-              value={formData.password}
-              onChange={handleInputChange}
-              placeholder="••••••••"
-              className="w-full pl-10 pr-10 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-            >
-              {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-            </button>
-          </div>
-          {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
-        </div>
+        {/* Additional fields only for registration */}
+        {!isLogin && (
+          <>
+            {/* Studio Name */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Studio Name</label>
+              <div className="relative">
+                <Building2 className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  name="studioName"
+                  value={formData.studioName}
+                  onChange={handleInputChange}
+                  placeholder="Your Studio Name"
+                  autoFocus
+                  className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition"
+                />
+              </div>
+              {errors.studioName && <p className="text-red-500 text-sm mt-1">{errors.studioName}</p>}
+            </div>
+
+            {/* Photographer Name */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Photographer Name</label>
+              <div className="relative">
+                <User className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  name="photographerName"
+                  value={formData.photographerName}
+                  onChange={handleInputChange}
+                  placeholder="Your Name"
+                  className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition"
+                />
+              </div>
+              {errors.photographerName && <p className="text-red-500 text-sm mt-1">{errors.photographerName}</p>}
+            </div>
+
+            {/* Mobile Number */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Mobile Number</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                <input
+                  type="tel"
+                  name="mobileNumber"
+                  value={formData.mobileNumber}
+                  onChange={handleInputChange}
+                  placeholder="+91 9876543210"
+                  className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition"
+                />
+              </div>
+              {errors.mobileNumber && <p className="text-red-500 text-sm mt-1">{errors.mobileNumber}</p>}
+            </div>
+
+            {/* Password - Show after other fields for registration */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder="••••••••"
+                  className="w-full pl-10 pr-10 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
+              {/* Password Strength Indicator */}
+              {formData.password && <PasswordStrengthIndicator password={formData.password} />}
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Confirm Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  placeholder="••••••••"
+                  className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400 transition"
+                />
+              </div>
+              {errors.confirmPassword && <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>}
+              {/* Password Match Indicator */}
+              {formData.password && formData.confirmPassword && (
+                <div className="mt-2">
+                  {formData.password === formData.confirmPassword ? (
+                    <p className="text-green-600 text-sm flex items-center gap-1">
+                      <span className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs">✓</span>
+                      </span>
+                      Passwords match
+                    </p>
+                  ) : (
+                    <p className="text-red-500 text-sm flex items-center gap-1">
+                      <span className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs">✗</span>
+                      </span>
+                      Passwords do not match
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Forgot Password Link */}
         {isLogin && (
@@ -317,8 +409,6 @@ export default function StudioForm({ isLogin, setIsLogin, onSwitchToUser }: Stud
         </button>
       </form>
 
-
-
       {/* Toggle Login/Signup */}
       <div className="text-center text-sm text-slate-600 dark:text-slate-400">
         {isLogin ? "Don't have an account? " : "Already have an account? "}
@@ -335,11 +425,10 @@ export default function StudioForm({ isLogin, setIsLogin, onSwitchToUser }: Stud
         <button
           onClick={onSwitchToUser}
           className="w-full text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white font-medium py-2 transition"
+          disabled={!onSwitchToUser}
         >
           Switch to User {isLogin ? "Login" : "Signup"}
         </button>
-        
-
       </div>
     </div>
   )

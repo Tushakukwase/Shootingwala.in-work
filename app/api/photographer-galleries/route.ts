@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
       description: gallery.description || '',
       images: gallery.images,
       photographerId: gallery.photographerId || 'unknown',
+      photographerName: gallery.photographerName || 'Photographer',
       status: gallery.status || 'draft',
       showOnHome: gallery.showOnHome || false,
       createdAt: gallery.createdAt,
@@ -173,6 +174,13 @@ export async function PUT(req: NextRequest) {
     
     const updatedGallery = await galleries.findOne({ _id: new ObjectId(id) });
     
+    if (!updatedGallery) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Gallery not found after update' 
+      }, { status: 404 });
+    }
+    
     return NextResponse.json({ 
       success: true,
       gallery: {
@@ -181,6 +189,7 @@ export async function PUT(req: NextRequest) {
         description: updatedGallery.description,
         images: updatedGallery.images,
         photographerId: updatedGallery.photographerId,
+        photographerName: updatedGallery.photographerName,
         status: updatedGallery.status,
         showOnHome: updatedGallery.showOnHome,
         createdAt: updatedGallery.createdAt,

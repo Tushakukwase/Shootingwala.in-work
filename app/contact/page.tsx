@@ -98,9 +98,9 @@ export default function ContactPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600 mb-2">Customer Support:</p>
-                <p className="font-semibold text-gray-900">+91 7798766666</p>
+                <p className="font-semibold text-gray-900">+91 2269645750</p>
                 <p className="text-gray-600 mt-4 mb-2">Business Hours:</p>
-                <p className="font-semibold text-gray-900">Mon - Sat: 9:00 AM - 7:00 PM</p>
+                <p className="font-semibold text-gray-900">24/7</p>
               </CardContent>
             </Card>
 
@@ -113,11 +113,24 @@ export default function ContactPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-gray-600 mb-2">Registered Office:</p>
-                <p className="font-semibold text-gray-900">
-                  Hanuman Ward, Tujpur<br />
-                  Bhandara, Maharashtra - 441904<br />
-                  India
+                <p className="font-semibold text-gray-900 mb-4">
+                  shootingwala, Hanuman Ward, Thana, Petrol Pump<br />
+                  Jawahar Nagar Road, Bhandara<br />
+                  Maharashtra, India - 441906
                 </p>
+                {/* Google Maps Embed */}
+                <div className="mt-4 rounded-lg overflow-hidden">
+                  <iframe 
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3752.979644781999!2d79.6964573148897!3d21.18333338590376!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bd4951f0c641983%3A0x7a8d0d0e5d5f5d5d!2sShootingwala!5e0!3m2!1sen!2sin!4v1654567890123!5m2!1sen!2sin" 
+                    width="100%" 
+                    height="300" 
+                    style={{ border: 0 }}
+                    allowFullScreen={true} 
+                    loading="lazy" 
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title="Shootingwala Location"
+                  ></iframe>
+                </div>
               </CardContent>
             </Card>
 

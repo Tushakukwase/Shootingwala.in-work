@@ -205,7 +205,7 @@ export default function AllUsersView() {
         </Card>
         <Card>
           <CardContent className="p-4 text-center">
-            <div className="text-2xl font-bold text-green-600">${stats.totalSpent.toLocaleString()}</div>
+            <div className="text-2xl font-bold text-green-600">${(stats.totalSpent || 0).toLocaleString()}</div>
             <div className="text-sm text-muted-foreground">Total Spent</div>
           </CardContent>
         </Card>
@@ -252,7 +252,7 @@ export default function AllUsersView() {
               <div className="flex items-start gap-4 mb-4">
                 <Avatar className="w-16 h-16">
                   <AvatarImage src={user.avatar} />
-                  <AvatarFallback>{user.fullName.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                  <AvatarFallback>{(user.fullName || 'Unknown')?.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg">{user.fullName}</h3>
@@ -275,7 +275,7 @@ export default function AllUsersView() {
                 )}
                 <div className="flex items-center gap-2">
                   <Calendar className="w-3 h-3 text-muted-foreground" />
-                  <span>{user.totalBookings} bookings</span>
+                  <span>{user.totalBookings || 0} bookings</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Heart className="w-3 h-3 text-red-500" />
@@ -289,7 +289,7 @@ export default function AllUsersView() {
 
               <div className="mt-4 p-3 bg-muted rounded-lg">
                 <div className="text-sm font-medium text-center">
-                  Total Spent: ${user.totalSpent.toLocaleString()}
+                  Total Spent: ${(user.totalSpent || 0).toLocaleString()}
                 </div>
               </div>
 
@@ -335,7 +335,7 @@ export default function AllUsersView() {
                 <CardTitle className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
                     <AvatarImage src={selectedUser.avatar} />
-                    <AvatarFallback>{selectedUser.fullName.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    <AvatarFallback>{(selectedUser.fullName || 'Unknown')?.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                   </Avatar>
                   {selectedUser.fullName}
                 </CardTitle>
@@ -378,7 +378,7 @@ export default function AllUsersView() {
                   <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-muted-foreground" />
-                      <span>{selectedUser.totalBookings} total bookings</span>
+                      <span>{selectedUser.totalBookings || 0} total bookings</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Heart className="w-4 h-4 text-red-500" />
@@ -390,7 +390,7 @@ export default function AllUsersView() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="w-4 h-4 text-green-600">$</span>
-                      <span>${selectedUser.totalSpent.toLocaleString()} total spent</span>
+                      <span>${(selectedUser.totalSpent || 0).toLocaleString()} total spent</span>
                     </div>
                   </div>
                 </div>

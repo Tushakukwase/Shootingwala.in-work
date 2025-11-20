@@ -1,6 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { isUserLoggedIn, getUserData, clearAuthData } from '@/lib/auth-utils'
 
 interface User {
   id: string
@@ -26,35 +27,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check if user is logged in on app start
-    const userData = localStorage.getItem('user')
-    const studioData = localStorage.getItem('studio')
-    
-    if (userData) {
-      try {
-        const parsedUser = JSON.parse(userData)
-        setUser(parsedUser)
-      } catch (error) {
-        console.error('Error parsing user data:', error)
-        localStorage.removeItem('user')
-        // Also clear cookies
-        document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
-        document.cookie = 'user=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+    if (isUserLoggedIn()) {
+      const userData = getUserData()
+      if (userData) {
+        setUser(userData)
+      } else {
+        clearAuthData()
       }
-    } else if (studioData) {
-      try {
-        const parsedStudio = JSON.parse(studioData)
-        // Convert studio data to user format
-        setUser({
-          id: parsedStudio._id || parsedStudio.id,
-          fullName: parsedStudio.name || parsedStudio.username,
-          email: parsedStudio.email,
-          phone: parsedStudio.mobile || '',
-          isVerified: true
-        })
-      } catch (error) {
-        console.error('Error parsing studio data:', error)
-        localStorage.removeItem('studio')
-      }
+    } else {
+      clearAuthData()
     }
     setLoading(false)
   }, [])
@@ -69,11 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setUser(null)
-    localStorage.removeItem('user')
-    localStorage.removeItem('studio')
-    // Clear cookies
-    document.cookie = 'auth-token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
-    document.cookie = 'user=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+    clearAuthData()
   }
 
   const value = {

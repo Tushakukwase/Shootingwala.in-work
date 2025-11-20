@@ -6,6 +6,8 @@ const REQUESTS_FILE = path.join(DATA_DIR, 'requests.json')
 const NOTIFICATIONS_FILE = path.join(DATA_DIR, 'notifications.json')
 const STORIES_FILE = path.join(DATA_DIR, 'stories.json')
 const GALLERIES_FILE = path.join(DATA_DIR, 'galleries.json')
+const LIKES_FILE = path.join(DATA_DIR, 'likes.json')
+const COMMENTS_FILE = path.join(DATA_DIR, 'comments.json')
 
 // Ensure data directory exists
 if (!fs.existsSync(DATA_DIR)) {
@@ -27,6 +29,14 @@ if (!fs.existsSync(STORIES_FILE)) {
 
 if (!fs.existsSync(GALLERIES_FILE)) {
   fs.writeFileSync(GALLERIES_FILE, JSON.stringify([]))
+}
+
+if (!fs.existsSync(LIKES_FILE)) {
+  fs.writeFileSync(LIKES_FILE, JSON.stringify([]))
+}
+
+if (!fs.existsSync(COMMENTS_FILE)) {
+  fs.writeFileSync(COMMENTS_FILE, JSON.stringify([]))
 }
 
 export class MockStorage {
@@ -99,6 +109,42 @@ export class MockStorage {
       fs.writeFileSync(GALLERIES_FILE, JSON.stringify(galleries, null, 2))
     } catch (error) {
       console.error('Error saving galleries:', error)
+    }
+  }
+
+  static getLikes(): any[] {
+    try {
+      const data = fs.readFileSync(LIKES_FILE, 'utf8')
+      return JSON.parse(data)
+    } catch (error) {
+      console.error('Error reading likes:', error)
+      return []
+    }
+  }
+
+  static saveLikes(likes: any[]): void {
+    try {
+      fs.writeFileSync(LIKES_FILE, JSON.stringify(likes, null, 2))
+    } catch (error) {
+      console.error('Error saving likes:', error)
+    }
+  }
+
+  static getComments(): any[] {
+    try {
+      const data = fs.readFileSync(COMMENTS_FILE, 'utf8')
+      return JSON.parse(data)
+    } catch (error) {
+      console.error('Error reading comments:', error)
+      return []
+    }
+  }
+
+  static saveComments(comments: any[]): void {
+    try {
+      fs.writeFileSync(COMMENTS_FILE, JSON.stringify(comments, null, 2))
+    } catch (error) {
+      console.error('Error saving comments:', error)
     }
   }
 }

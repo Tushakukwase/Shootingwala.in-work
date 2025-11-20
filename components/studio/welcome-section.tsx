@@ -1,7 +1,65 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Calendar, DollarSign, Camera } from "lucide-react"
+import { useState, useEffect } from "react"
 
 export function WelcomeSection() {
+  const [profileData, setProfileData] = useState({
+    name: '',
+    studioName: ''
+  })
+  const [studioData, setStudioData] = useState<any>(null)
+
+  useEffect(() => {
+    // Get studio data from localStorage
+    const data = localStorage.getItem('studio')
+    if (data) {
+      try {
+        const parsed = JSON.parse(data)
+        setStudioData(parsed)
+        fetchProfileData(parsed._id)
+      } catch (error) {
+        console.error('Error parsing studio data:', error)
+      }
+    }
+  }, [])
+
+  const fetchProfileData = async (photographerId: string) => {
+    try {
+      const response = await fetch(`/api/photographer-profile?id=${photographerId}`)
+      const data = await response.json()
+      
+      if (data.success && data.profile) {
+        const profile = data.profile
+        setProfileData({
+          name: profile.name || studioData?.name || studioData?.photographerName || '',
+          studioName: profile.studioName || ''
+        })
+      } else {
+        // Fallback to localStorage data
+        setProfileData({
+          name: studioData?.name || studioData?.photographerName || '',
+          studioName: ''
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching profile data:', error)
+      // Fallback to localStorage data
+      setProfileData({
+        name: studioData?.name || studioData?.photographerName || '',
+        studioName: ''
+      })
+    }
+  }
+
+  const getDisplayName = () => {
+    return profileData.studioName || 
+           profileData.name || 
+           studioData?.name || 
+           studioData?.photographerName || 
+           studioData?.username || 
+           studioData?.email?.split('@')[0] || 
+           "Photographer"
+  }
   const stats = [
     {
       icon: Calendar,
@@ -26,7 +84,7 @@ export function WelcomeSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Welcome back, Sarah 👋</h1>
+        <h1 className="text-3xl font-bold text-foreground">Welcome back, {getDisplayName()} 👋</h1>
         <p className="text-muted-foreground mt-2">Here's what's happening with your photography business today</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -18,7 +18,7 @@ export default function AdminLoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          username: 'tusharkukwase24@gmail.com',
+          email: 'tusharkukwase24@gmail.com',
           password: 'admin123',
         }),
       })

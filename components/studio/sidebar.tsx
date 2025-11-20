@@ -1,6 +1,6 @@
 "use client"
 
-import { LayoutDashboard, ImageIcon, Calendar, Star, TrendingUp, User, BookOpen, LogOut, Camera, FileText } from "lucide-react"
+import { LayoutDashboard, ImageIcon, Calendar, Star, TrendingUp, User, BookOpen, Camera, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface SidebarProps {
@@ -48,16 +48,6 @@ export default function Sidebar({ currentPage, onPageChange }: SidebarProps) {
           )
         })}
       </nav>
-      
-      <div className="p-4 border-t border-sidebar-border">
-        <Button
-          variant="outline"
-          className="w-full flex items-center gap-2 justify-center text-sidebar-foreground border-sidebar-border hover:bg-sidebar-accent bg-transparent"
-        >
-          <LogOut size={18} />
-          <span>Logout</span>
-        </Button>
-      </div>
     </aside>
   )
 }

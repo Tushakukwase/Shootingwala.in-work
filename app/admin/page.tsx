@@ -2,54 +2,50 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { LayoutDashboard, Users, ShoppingCart, BarChart2, Settings as SettingsIcon, Trash, Album, Mail, MapPin, BookOpen, Image as GalleryIcon } from "lucide-react";
+import { LayoutDashboard, Users, ShoppingCart, BarChart2, Settings as SettingsIcon, Trash, Album, Mail, MapPin, BookOpen, Image as GalleryIcon, Check, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import NextImage from "next/image";
-import { Upload, X, Eye, Download, Edit3, ImageIcon, Check, Plus, Trash2, Search, Tag } from "lucide-react";
+import { Upload, X, Eye, Download, Edit3, ImageIcon, Plus, Trash2, Search, Tag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import DigitalAlbumManager from "@/components/admin/digital-album-manager";
 import DigitalInvitationManager from "@/components/admin/digital-invitation-manager";
-import AlbumPreview from "@/components/admin/album-preview";
-import InvitationPreview from "@/components/admin/invitation-preview";
-import PhotographersManager from "@/components/admin/photographers-manager";
-import CitiesManager from "@/components/admin/cities-manager";
-import CategoriesManager from "@/components/admin/categories-manager";
+import HeroSectionManager from "@/components/admin/hero-section-manager";
+
+import AllPhotographersView from "@/components/admin/all-photographers-view";
 import CategorySuggestionsManager from "@/components/admin/category-suggestions-manager";
 import CitySuggestionsManager from "@/components/admin/city-suggestions-manager";
-import PhotographerApprovals from "@/components/admin/photographer-approvals";
 import AllUsersManager from "@/components/admin/all-users-manager";
-import StoriesManager from "@/components/admin/stories-manager";
 import GalleryManager from "@/components/admin/gallery-manager";
-import EnhancedStoriesManager from "@/components/admin/enhanced-stories-manager";
-import PhotographerStoriesManager from "@/components/admin/photographer-stories-manager";
-
-import UnifiedContentManager from "@/components/admin/unified-content-manager";
+import StoriesManager from "@/components/admin/stories-manager";
+import MessagesView from "@/components/admin/messages-view";
+import EnhancedMessagingView from "@/components/admin/enhanced-messaging-view";
 
 import NotificationDropdown from "@/components/admin/notification-dropdown";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
+import EngagementMetrics from "@/components/admin/engagement-metrics"
+import AdminDashboard from "@/components/admin/admin-dashboard";
+import NewAdminDashboard from "@/components/admin/new-admin-dashboard";
 
 const menuItems = [
   { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-5 h-5 mr-3" /> },
-  { key: "pending-photographers", label: "Photographer Approvals", icon: <Users className="w-5 h-5 mr-3 text-red-500" />, hasBadge: true },
+  { key: "photographers", label: "Photographers", icon: <Users className="w-5 h-5 mr-3 text-green-500" />, hasBadge: true },
   { key: "users", label: "All Users", icon: <Users className="w-5 h-5 mr-3" /> },
-
-  { key: "orders", label: "Orders", icon: <ShoppingCart className="w-5 h-5 mr-3" /> },
-  { key: "reports", label: "Reports", icon: <BarChart2 className="w-5 h-5 mr-3" /> },
-  { key: "settings", label: "Settings", icon: <SettingsIcon className="w-5 h-5 mr-3" /> },
-  { key: "heroimg", label: "Hero Section Image", icon: <img src="/front%20img.jpg" alt="Hero" className="w-5 h-5 mr-3 rounded-full border border-gray-300 object-cover" /> },
+  
+  { key: "hero-section", label: "Hero Section", icon: <img src="/placeholder.jpg" alt="Hero" className="w-5 h-5 mr-3 rounded-full border border-gray-300 object-cover" /> },
   { key: "categories", label: "Popular Searches Categories", icon: <BarChart2 className="w-5 h-5 mr-3 text-orange-500" />, hasBadge: true },
   { key: "cities", label: "Popular Searches Cities", icon: <MapPin className="w-5 h-5 mr-3 text-blue-500" />, hasBadge: true },
-  { key: "photographers", label: "Photographers", icon: <Users className="w-5 h-5 mr-3 text-green-500" /> },
   { key: "gallery", label: "Gallery", icon: <GalleryIcon className="w-5 h-5 mr-3 text-teal-500" />, hasBadge: true },
   { key: "stories", label: "Real Stories", icon: <BookOpen className="w-5 h-5 mr-3 text-indigo-500" />, hasBadge: true },
-
+  { key: "messages", label: "Messages", icon: <Mail className="w-5 h-5 mr-3 text-green-600" />, hasBadge: true },
+  
   { key: "digital-album", label: "Digital Album", icon: <Album className="w-5 h-5 mr-3 text-purple-500" /> },
   { key: "digital-invitation", label: "Digital Invitation", icon: <Mail className="w-5 h-5 mr-3 text-pink-500" /> },
+  
 ];
 
 function HeroImageManager() {
@@ -767,6 +763,10 @@ function DigitalAlbumSection() {
   const [albumImageUrl, setAlbumImageUrl] = useState<string | null>(null)
   const [albumTitle, setAlbumTitle] = useState<string>("")
   const [albumDescription, setAlbumDescription] = useState<string>("")
+  const [albumButtonText, setAlbumButtonText] = useState<string>("Know More")
+  const [albumButtonAction, setAlbumButtonAction] = useState<'redirect' | 'modal' | 'contact'>('redirect')
+  const [albumRedirectUrl, setAlbumRedirectUrl] = useState<string>("/digital-albums")
+  const [albumIsEnabled, setAlbumIsEnabled] = useState<boolean>(true)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -776,50 +776,78 @@ function DigitalAlbumSection() {
         if (data.imageUrl) setAlbumImageUrl(data.imageUrl)
         if (data.title) setAlbumTitle(data.title)
         if (data.description) setAlbumDescription(data.description)
+        if (data.buttonText) setAlbumButtonText(data.buttonText)
+        if (data.buttonAction) setAlbumButtonAction(data.buttonAction)
+        if (data.redirectUrl) setAlbumRedirectUrl(data.redirectUrl)
+        if (data.isEnabled !== undefined) setAlbumIsEnabled(data.isEnabled)
       })
       .catch(err => console.error('Failed to load album data:', err))
   }, [])
 
   const handleAlbumSave = async () => {
     try {
-      const response = await fetch('/api/digital-album', {
+      let finalImageUrl = albumImageUrl
+
+      // Convert blob URL to base64 if it's a blob
+      if (albumImageUrl && albumImageUrl.startsWith('blob:')) {
+        try {
+          const response = await fetch(albumImageUrl)
+          const blob = await response.blob()
+          const reader = new FileReader()
+          
+          finalImageUrl = await new Promise((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string)
+            reader.readAsDataURL(blob)
+          })
+        } catch (blobError) {
+          console.error('Failed to convert blob to base64:', blobError)
+          // Continue with original URL if conversion fails
+        }
+      }
+
+      const apiResponse = await fetch('/api/digital-album', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          imageUrl: albumImageUrl,
+          imageUrl: finalImageUrl,
           title: albumTitle,
           description: albumDescription,
+          buttonText: albumButtonText,
+          buttonAction: albumButtonAction,
+          redirectUrl: albumRedirectUrl,
+          isEnabled: albumIsEnabled,
         }),
       })
 
-      if (response.ok) {
-        toast({ title: "Album saved", description: "Digital album content updated successfully." })
+      if (apiResponse.ok) {
+        toast({ id: "album-saved", title: "Album saved", description: "Digital album content updated successfully." })
       } else {
         throw new Error('Failed to save')
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to save album content. Please try again.", variant: "destructive" })
+      toast({ id: "album-error", title: "Error", description: "Failed to save album content. Please try again.", variant: "destructive" })
     }
   }
 
   return (
     <div className="p-6">
-      <div className="grid gap-6 md:gap-8 lg:gap-10 md:grid-cols-2 items-start">
-        <DigitalAlbumManager
-          imageUrl={albumImageUrl}
-          setImageUrl={setAlbumImageUrl}
-          title={albumTitle}
-          setTitle={setAlbumTitle}
-          description={albumDescription}
-          setDescription={setAlbumDescription}
-          onSave={handleAlbumSave}
-        />
-        <AlbumPreview
-          imageUrl={albumImageUrl}
-          title={albumTitle}
-          description={albumDescription}
-        />
-      </div>
+      <DigitalAlbumManager
+        imageUrl={albumImageUrl}
+        setImageUrl={setAlbumImageUrl}
+        title={albumTitle}
+        setTitle={setAlbumTitle}
+        description={albumDescription}
+        setDescription={setAlbumDescription}
+        buttonText={albumButtonText}
+        setButtonText={setAlbumButtonText}
+        buttonAction={albumButtonAction}
+        setButtonAction={setAlbumButtonAction}
+        redirectUrl={albumRedirectUrl}
+        setRedirectUrl={setAlbumRedirectUrl}
+        isEnabled={albumIsEnabled}
+        setIsEnabled={setAlbumIsEnabled}
+        onSave={handleAlbumSave}
+      />
     </div>
   )
 }
@@ -830,6 +858,10 @@ function DigitalInvitationSection() {
   const [eventDate, setEventDate] = useState<string>("")
   const [eventLocation, setEventLocation] = useState<string>("")
   const [invitationDescription, setInvitationDescription] = useState<string>("")
+  const [invitationButtonText, setInvitationButtonText] = useState<string>("Know More")
+  const [invitationButtonAction, setInvitationButtonAction] = useState<'redirect' | 'modal' | 'contact'>('redirect')
+  const [invitationRedirectUrl, setInvitationRedirectUrl] = useState<string>("/digital-invitations")
+  const [invitationIsEnabled, setInvitationIsEnabled] = useState<boolean>(true)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -841,79 +873,129 @@ function DigitalInvitationSection() {
         if (data.eventDate) setEventDate(data.eventDate)
         if (data.eventLocation) setEventLocation(data.eventLocation)
         if (data.description) setInvitationDescription(data.description)
+        if (data.buttonText) setInvitationButtonText(data.buttonText)
+        if (data.buttonAction) setInvitationButtonAction(data.buttonAction)
+        if (data.redirectUrl) setInvitationRedirectUrl(data.redirectUrl)
+        if (data.isEnabled !== undefined) setInvitationIsEnabled(data.isEnabled)
       })
       .catch(err => console.error('Failed to load invitation data:', err))
   }, [])
 
   const handleInvitationSave = async () => {
     try {
-      const response = await fetch('/api/digital-invitation', {
+      let finalImageUrl = invitationImageUrl
+
+      // Convert blob URL to base64 if it's a blob
+      if (invitationImageUrl && invitationImageUrl.startsWith('blob:')) {
+        try {
+          const response = await fetch(invitationImageUrl)
+          const blob = await response.blob()
+          const reader = new FileReader()
+          
+          finalImageUrl = await new Promise((resolve) => {
+            reader.onloadend = () => resolve(reader.result as string)
+            reader.readAsDataURL(blob)
+          })
+        } catch (blobError) {
+          console.error('Failed to convert blob to base64:', blobError)
+          // Continue with original URL if conversion fails
+        }
+      }
+
+      const apiResponse = await fetch('/api/digital-invitation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          imageUrl: invitationImageUrl,
+          imageUrl: finalImageUrl,
           eventTitle,
           eventDate,
           eventLocation,
           description: invitationDescription,
+          buttonText: invitationButtonText,
+          buttonAction: invitationButtonAction,
+          redirectUrl: invitationRedirectUrl,
+          isEnabled: invitationIsEnabled,
         }),
       })
 
-      if (response.ok) {
-        toast({ title: "Invitation saved", description: "Digital invitation content updated successfully." })
+      if (apiResponse.ok) {
+        toast({ id: "invitation-saved", title: "Invitation saved", description: "Digital invitation content updated successfully." })
       } else {
         throw new Error('Failed to save')
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to save invitation content. Please try again.", variant: "destructive" })
+      toast({ id: "invitation-error", title: "Error", description: "Failed to save invitation content. Please try again.", variant: "destructive" })
     }
   }
 
   return (
     <div className="p-6">
-      <div className="grid gap-6 md:gap-8 lg:gap-10 md:grid-cols-2 items-start">
-        <DigitalInvitationManager
-          imageUrl={invitationImageUrl}
-          setImageUrl={setInvitationImageUrl}
-          eventTitle={eventTitle}
-          setEventTitle={setEventTitle}
-          eventDate={eventDate}
-          setEventDate={setEventDate}
-          eventLocation={eventLocation}
-          setEventLocation={setEventLocation}
-          description={invitationDescription}
-          setDescription={setInvitationDescription}
-          onSave={handleInvitationSave}
-        />
-        <InvitationPreview
-          imageUrl={invitationImageUrl}
-          eventTitle={eventTitle}
-          eventDate={eventDate}
-          eventLocation={eventLocation}
-          description={invitationDescription}
-        />
-      </div>
+      <DigitalInvitationManager
+        imageUrl={invitationImageUrl}
+        setImageUrl={setInvitationImageUrl}
+        eventTitle={eventTitle}
+        setEventTitle={setEventTitle}
+        eventDate={eventDate}
+        setEventDate={setEventDate}
+        eventLocation={eventLocation}
+        setEventLocation={setEventLocation}
+        description={invitationDescription}
+        setDescription={setInvitationDescription}
+        buttonText={invitationButtonText}
+        setButtonText={setInvitationButtonText}
+        buttonAction={invitationButtonAction}
+        setButtonAction={setInvitationButtonAction}
+        redirectUrl={invitationRedirectUrl}
+        setRedirectUrl={setInvitationRedirectUrl}
+        isEnabled={invitationIsEnabled}
+        setIsEnabled={setInvitationIsEnabled}
+        onSave={handleInvitationSave}
+      />
     </div>
   )
 }
 
 export default function AdminPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [activeSection, setActiveSection] = useState("dashboard");
   const [isVerifying, setIsVerifying] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [pendingCounts, setPendingCounts] = useState({ categories: 0, cities: 0, photographerGalleries: 0, photographerStories: 0, photographerApprovals: 0, total: 0 });
+  const [pendingCounts, setPendingCounts] = useState({ categories: 0, cities: 0, photographerGalleries: 0, photographerStories: 0, photographerApprovals: 0, messages: 0, total: 0 });
+  const [previousTotal, setPreviousTotal] = useState(0);
 
   const loadPendingCounts = async () => {
     try {
       const response = await fetch('/api/admin/pending-counts');
+      
+      if (!response.ok) {
+        console.error('Failed to fetch pending counts:', response.status, response.statusText);
+        return;
+      }
+      
       const data = await response.json();
       
       if (data.success) {
+        const newTotal = data.data.total;
+        // Check if there are new notifications
+        if (newTotal > previousTotal && previousTotal > 0) {
+          // Show toast notification for new pending items
+          toast({
+            id: "new-pending-items",
+            title: "New Pending Items",
+            description: `You have ${newTotal - previousTotal} new pending item(s) to review`,
+          });
+        }
+        setPreviousTotal(newTotal);
         setPendingCounts(data.data);
+      } else {
+        // Set default values on API error
+        setPendingCounts({ categories: 0, cities: 0, photographerGalleries: 0, photographerStories: 0, photographerApprovals: 0, messages: 0, total: 0 });
       }
     } catch (error) {
       console.error('Error loading pending counts:', error);
+      // Set default values on network error
+      setPendingCounts({ categories: 0, cities: 0, photographerGalleries: 0, photographerStories: 0, photographerApprovals: 0, messages: 0, total: 0 });
     }
   };
 
@@ -928,13 +1010,49 @@ export default function AdminPage() {
           if (parts.length === 2) return parts.pop()?.split(';').shift();
         };
 
+        // Check both cookie and localStorage for user data
         const userCookie = getCookie('user');
-        if (!userCookie) {
+        const localStorageUser = localStorage.getItem('user');
+        const localStorageStudio = localStorage.getItem('studio');
+        
+        let userData = null;
+        
+        // Try to get user data from cookie first
+        if (userCookie) {
+          try {
+            userData = JSON.parse(decodeURIComponent(userCookie));
+          } catch (error) {
+            console.error('Error parsing user cookie:', error);
+          }
+        }
+        
+        // If no cookie data, try localStorage
+        if (!userData && localStorageUser) {
+          try {
+            userData = JSON.parse(localStorageUser);
+          } catch (error) {
+            console.error('Error parsing localStorage user:', error);
+          }
+        }
+        
+        // If no user data, try studio data
+        if (!userData && localStorageStudio) {
+          try {
+            const studioData = JSON.parse(localStorageStudio);
+            userData = {
+              email: studioData.email,
+              name: studioData.name || studioData.username,
+              id: studioData._id || studioData.id
+            };
+          } catch (error) {
+            console.error('Error parsing localStorage studio:', error);
+          }
+        }
+        
+        if (!userData || !userData.email) {
           router.push('/studio-auth');
           return;
         }
-
-        const userData = JSON.parse(decodeURIComponent(userCookie));
         
         // Verify with server that this email is authorized for admin access
         const response = await fetch('/api/admin/verify', {
@@ -950,8 +1068,13 @@ export default function AdminPage() {
           // Load pending counts after authorization
           loadPendingCounts();
         } else {
-          console.log('Unauthorized admin access attempt');
-          router.push('/studio-dashboard');
+          console.log('Unauthorized admin access attempt for email:', userData.email);
+          // Only redirect to studio dashboard if user is actually a studio, not admin
+          if (localStorageStudio && !localStorageUser) {
+            router.push('/studio-dashboard');
+          } else {
+            router.push('/studio-auth');
+          }
         }
       } catch (error) {
         console.error('Admin verification failed:', error);
@@ -971,6 +1094,23 @@ export default function AdminPage() {
       return () => clearInterval(interval);
     }
   }, [isAuthorized]);
+
+  // Handle URL hash routing for notifications
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.substring(1); // Remove the #
+      if (hash && hash !== activeSection) {
+        setActiveSection(hash);
+      }
+    };
+
+    // Check hash on mount
+    handleHashChange();
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [activeSection]);
 
   // Show loading screen while verifying
   if (isVerifying) {
@@ -997,148 +1137,53 @@ export default function AdminPage() {
   }
 
   const renderContent = () => {
+    console.log('Rendering content for section:', activeSection); // Debug log
+    
     switch (activeSection) {
-      case "heroimg":
-        return <HeroImageManager />;
+      case "hero-section":
+        return <HeroSectionManager />;
       case "categories":
         return <CategorySuggestionsManager />;
       case "cities":
         return <CitySuggestionsManager />;
       case "photographers":
-        return <PhotographersManager />;
-      case "pending-photographers":
-        return <PhotographerApprovals />;
-
+        return <AllPhotographersView />;
       case "users":
         return <AllUsersManager />;
       case "gallery":
         return <GalleryManager />;
       case "stories":
-        return <EnhancedStoriesManager />;
-
+        return <StoriesManager />;
+      case "messages":
+        return <EnhancedMessagingView />;
       case "digital-album":
         return <DigitalAlbumSection />;
       case "digital-invitation":
         return <DigitalInvitationSection />;
-      default:
+
+      case "orders":
         return (
           <div className="p-8">
-            <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
-            
-            {/* Database Management */}
-            <div className="mb-8">
-              <Card className="border-2 border-blue-200 bg-blue-50/30">
-                <CardHeader>
-                  <CardTitle className="text-blue-800">Database Management</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-gray-600">
-                    Test your MongoDB Atlas connection and initialize sample data
-                  </p>
-                  <div className="flex gap-4">
-                    <Button 
-                      onClick={async () => {
-                        try {
-                          const response = await fetch('/api/test-db')
-                          const data = await response.json()
-                          alert(data.success ? 'Database connection successful!' : `Error: ${data.error}`)
-                        } catch (error) {
-                          alert('Failed to test database connection')
-                        }
-                      }}
-                      variant="outline"
-                      className="border-blue-500 text-blue-700 hover:bg-blue-100"
-                    >
-                      Test Database Connection
-                    </Button>
-                    <Button 
-                      onClick={async () => {
-                        try {
-                          const response = await fetch('/api/init-db', { method: 'POST' })
-                          const data = await response.json()
-                          alert(data.success ? 'Database initialized with sample data!' : `Error: ${data.error}`)
-                        } catch (error) {
-                          alert('Failed to initialize database')
-                        }
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white"
-                    >
-                      Initialize Sample Data
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Pending Photographer Approvals */}
-            {pendingCounts.photographerApprovals > 0 && (
-              <div className="mb-8">
-                <Card className="border-2 border-red-200 bg-red-50/30">
-                  <CardHeader>
-                    <CardTitle className="text-red-800 flex items-center gap-2">
-                      <Users className="w-5 h-5" />
-                      Photographer Approvals Required
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-sm text-gray-600">
-                      {pendingCounts.photographerApprovals} photographer{pendingCounts.photographerApprovals > 1 ? 's' : ''} waiting for approval
-                    </p>
-                    <div className="flex gap-4">
-                      <Button 
-                        onClick={() => setActiveSection('pending-photographers')}
-                        className="bg-red-600 hover:bg-red-700 text-white"
-                      >
-                        <Users className="w-4 h-4 mr-2" />
-                        Review Photographers ({pendingCounts.photographerApprovals})
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setActiveSection('pending-photographers')}>
-                <CardHeader>
-                  <CardTitle className="text-red-600 flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    Pending Approvals
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-red-600">{pendingCounts.photographerApprovals}</p>
-                  <p className="text-sm text-gray-500">Photographers waiting</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Total Pending</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold text-orange-600">{pendingCounts.total}</p>
-                  <p className="text-sm text-gray-500">All pending items</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Total Orders</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold">567</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Revenue</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-3xl font-bold">$12,345</p>
-                </CardContent>
-              </Card>
-            </div>
+            <h1 className="text-2xl font-bold">Orders Management</h1>
+            <p>Orders management coming soon...</p>
           </div>
         );
+      case "reports":
+        return (
+          <div className="p-8">
+            <h1 className="text-2xl font-bold">Reports</h1>
+            <p>Reports coming soon...</p>
+          </div>
+        );
+      case "settings":
+        return (
+          <div className="p-8">
+            <h1 className="text-2xl font-bold">Settings</h1>
+            <p>Settings coming soon...</p>
+          </div>
+        );
+      default:
+        return <NewAdminDashboard />;
     }
   };
 
@@ -1155,12 +1200,22 @@ export default function AdminPage() {
         <nav className="mt-4">
           {menuItems.map((item) => {
             const getBadgeCount = () => {
-              if (item.key === 'categories') return pendingCounts.categories;
-              if (item.key === 'cities') return pendingCounts.cities;
-              if (item.key === 'pending-photographers') return pendingCounts.photographerApprovals || 0;
-              if (item.key === 'gallery') return pendingCounts.photographerGalleries || 0;
-              if (item.key === 'stories') return pendingCounts.photographerStories || 0;
-              return 0;
+              switch (item.key) {
+                case 'categories':
+                  return pendingCounts.categories || 0;
+                case 'cities':
+                  return pendingCounts.cities || 0;
+                case 'photographers':
+                  return pendingCounts.photographerApprovals || 0;
+                case 'gallery':
+                  return pendingCounts.photographerGalleries || 0;
+                case 'stories':
+                  return pendingCounts.photographerStories || 0;
+                case 'messages':
+                  return pendingCounts.messages || 0;
+                default:
+                  return 0;
+              }
             };
             
             const badgeCount = getBadgeCount();
@@ -1168,7 +1223,16 @@ export default function AdminPage() {
             return (
               <button
                 key={item.key}
-                onClick={() => setActiveSection(item.key)}
+                onClick={() => {
+                  console.log('Clicking menu item:', item.key); // Debug log
+                  setActiveSection(item.key);
+                  // Refresh pending counts when switching tabs
+                  if (item.hasBadge) {
+                    setTimeout(() => {
+                      loadPendingCounts();
+                    }, 1000); // Refresh after 1 second to allow for any updates
+                  }
+                }}
                 className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${
                   activeSection === item.key
                     ? "bg-blue-100 text-blue-700 border-r-2 border-blue-500"
@@ -1180,7 +1244,7 @@ export default function AdminPage() {
                   {item.label}
                 </div>
                 {item.hasBadge && badgeCount > 0 && (
-                  <Badge className="bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center">
+                  <Badge className="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded-full min-w-[20px] h-5 flex items-center justify-center animate-pulse shadow-lg">
                     {badgeCount > 99 ? '99+' : badgeCount}
                   </Badge>
                 )}

@@ -6,7 +6,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import NextImage from "next/image"
-import { Search, Users, Eye, Mail, Phone, MapPin, Camera, Calendar, Filter } from "lucide-react"
+import { Search, Users, Eye, Mail, Phone, MapPin, Camera, Calendar, Filter, Edit, Trash2, Ban, CheckCircle, XCircle, ChevronLeft, ChevronRight } from "lucide-react"
+import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { useToast } from "@/hooks/use-toast"
 
 interface User {
   _id: string
@@ -27,6 +36,14 @@ interface User {
   lastLogin?: string
 }
 
+interface Pagination {
+  currentPage: number
+  totalPages: number
+  totalUsers: number
+  hasNext: boolean
+  hasPrev: boolean
+}
+
 export default function AllUsersManager() {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,73 +51,200 @@ export default function AllUsersManager() {
   const [filterType, setFilterType] = useState<string>("all")
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [editForm, setEditForm] = useState({ fullName: '', email: '', phone: '' })
+  const [pagination, setPagination] = useState<Pagination>({
+    currentPage: 1,
+    totalPages: 1,
+    totalUsers: 0,
+    hasNext: false,
+    hasPrev: false
+  })
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchAllUsers()
-  }, [])
+  }, [pagination.currentPage, searchTerm, filterType, filterStatus])
 
   const fetchAllUsers = async () => {
     try {
       setLoading(true)
       
-      // Fetch regular users
-      const usersResponse = await fetch('/api/auth/users')
+      // Fetch regular users with pagination
+      const usersResponse = await fetch(`/api/admin/users?page=${pagination.currentPage}&limit=10&search=${searchTerm}&userType=${filterType}&status=${filterStatus}`)
       const usersData = await usersResponse.json()
       
-      // Fetch photographers
-      const photographersResponse = await fetch('/api/photographers')
-      const photographersData = await photographersResponse.json()
-      
-      // Combine and normalize data
-      const allUsers: User[] = []
-      
-      // Add regular users
-      if (usersData.users) {
-        usersData.users.forEach((user: any) => {
-          allUsers.push({
-            _id: user._id || user.id,
-            name: user.fullName || user.name,
-            fullName: user.fullName,
-            email: user.email,
-            phone: user.phone,
-            userType: user.role === 'admin' ? 'admin' : 'client',
-            status: user.isVerified ? 'active' : 'pending',
-            createdAt: user.createdAt || new Date().toISOString(),
-            lastLogin: user.lastLogin
-          })
-        })
+      if (usersData.success) {
+        // Normalize user data
+        const normalizedUsers = usersData.users.map((user: any) => ({
+          _id: user._id,
+          name: user.fullName || user.name || 'Unknown',
+          fullName: user.fullName,
+          email: user.email,
+          phone: user.phone,
+          userType: user.role === 'admin' ? 'admin' : user.role === 'photographer' ? 'photographer' : 'client',
+          status: user.status || (user.isVerified ? 'active' : 'pending'),
+          createdAt: user.createdAt || new Date().toISOString(),
+          lastLogin: user.lastLogin,
+          image: user.image
+        }))
+        
+        setUsers(normalizedUsers)
+        setPagination(usersData.pagination)
       }
       
-      // Add photographers
-      if (photographersData.photographers) {
-        photographersData.photographers.forEach((photographer: any) => {
-          allUsers.push({
-            _id: photographer._id || photographer.id,
-            name: photographer.name,
-            email: photographer.email,
-            phone: photographer.phone,
-            location: photographer.location,
-            userType: 'photographer',
-            status: photographer.isApproved ? 'approved' : (photographer.status || 'pending'),
-            isApproved: photographer.isApproved,
-            image: photographer.image,
-            categories: photographer.categories,
-            experience: photographer.experience,
-            startingPrice: photographer.startingPrice,
-            createdAt: photographer.createdAt || new Date().toISOString(),
-            registrationDate: photographer.registrationDate
-          })
-        })
-      }
+      // For now, we'll keep the existing logic for photographers
+      // In a real implementation, you might want to combine both APIs
       
-      // Sort by creation date (newest first)
-      allUsers.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      
-      setUsers(allUsers)
     } catch (error) {
       // Silently handle error
+      toast({
+        title: "Error",
+        description: "Failed to fetch users",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePageChange = (newPage: number) => {
+    setPagination(prev => ({
+      ...prev,
+      currentPage: newPage
+    }))
+  }
+
+  const handleDeleteUser = async (userId: string) => {
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "User deleted successfully",
+        })
+        fetchAllUsers() // Refresh the list
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to delete user",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleBlockUser = async (userId: string) => {
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId, action: 'block' })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "User blocked successfully",
+        })
+        fetchAllUsers() // Refresh the list
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to block user",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to block user",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleUnblockUser = async (userId: string) => {
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: userId, action: 'unblock' })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "User unblocked successfully",
+        })
+        fetchAllUsers() // Refresh the list
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to unblock user",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to unblock user",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleEditUser = async () => {
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          id: editingUser?._id, 
+          action: 'update',
+          userData: editForm
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "User updated successfully",
+        })
+        setEditingUser(null)
+        fetchAllUsers() // Refresh the list
+      } else {
+        toast({
+          title: "Error",
+          description: data.error || "Failed to update user",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update user",
+        variant: "destructive",
+      })
     }
   }
 
@@ -318,7 +462,7 @@ export default function AllUsersManager() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total Users</p>
-                  <p className="text-2xl font-bold text-indigo-600">{users.length}</p>
+                  <p className="text-2xl font-bold text-indigo-600">{pagination.totalUsers}</p>
                 </div>
                 <Users className="w-8 h-8 text-indigo-600" />
               </div>
@@ -414,7 +558,7 @@ export default function AllUsersManager() {
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <Users className="w-5 h-5" />
-                All Users ({filteredUsers.length})
+                All Users ({pagination.totalUsers})
               </CardTitle>
             </div>
           </CardHeader>
@@ -431,74 +575,220 @@ export default function AllUsersManager() {
                 <p className="text-gray-400">Try adjusting your search or filters</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {filteredUsers.map((user) => (
-                  <Card key={user._id} className="border border-gray-200 hover:shadow-lg transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
-                            {user.image ? (
-                              <NextImage
-                                src={user.image}
-                                alt={user.name}
-                                width={48}
-                                height={48}
-                                className="object-cover w-full h-full"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <Users className="w-6 h-6 text-gray-400" />
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">User</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Email</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Phone</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Registration Date</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Type</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredUsers.map((user) => (
+                        <tr key={user._id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200">
+                                {user.image ? (
+                                  <NextImage
+                                    src={user.image}
+                                    alt={user.name}
+                                    width={40}
+                                    height={40}
+                                    className="object-cover w-full h-full"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center">
+                                    <Users className="w-5 h-5 text-gray-400" />
+                                  </div>
+                                )}
                               </div>
-                            )}
-                          </div>
-                          
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-gray-900">{user.name}</h3>
-                            <p className="text-gray-600">{user.email}</p>
-                            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                              {user.phone && (
-                                <span className="flex items-center gap-1">
-                                  <Phone className="w-3 h-3" />
-                                  {user.phone}
-                                </span>
-                              )}
-                              {user.location && (
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="w-3 h-3" />
-                                  {user.location}
-                                </span>
-                              )}
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" />
-                                {formatDate(user.createdAt)}
-                              </span>
+                              <div>
+                                <p className="font-medium text-gray-900">{user.name}</p>
+                              </div>
                             </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <Badge variant="outline" className={getUserTypeColor(user.userType)}>
-                            {user.userType.charAt(0).toUpperCase() + user.userType.slice(1)}
-                          </Badge>
-                          <Badge variant="outline" className={getUserStatusColor(user.status)}>
-                            {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                          </Badge>
+                          </td>
+                          <td className="py-3 px-4 text-gray-600">{user.email}</td>
+                          <td className="py-3 px-4 text-gray-600">{user.phone || 'N/A'}</td>
+                          <td className="py-3 px-4 text-gray-600">{formatDate(user.createdAt)}</td>
+                          <td className="py-3 px-4">
+                            <Badge variant="outline" className={getUserTypeColor(user.userType)}>
+                              {user.userType.charAt(0).toUpperCase() + user.userType.slice(1)}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge variant="outline" className={getUserStatusColor(user.status)}>
+                              {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedUser(user)}
+                                className="flex items-center gap-1"
+                              >
+                                <Eye className="w-4 h-4" />
+                                <span className="hidden md:inline">View</span>
+                              </Button>
+                              
+                              <Dialog open={editingUser?._id === user._id} onOpenChange={(open) => !open && setEditingUser(null)}>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setEditingUser(user)
+                                      setEditForm({
+                                        fullName: user.fullName || user.name || '',
+                                        email: user.email || '',
+                                        phone: user.phone || ''
+                                      })
+                                    }}
+                                    className="flex items-center gap-1"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                    <span className="hidden md:inline">Edit</span>
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Edit User</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div>
+                                      <Label htmlFor="fullName">Full Name</Label>
+                                      <Input
+                                        id="fullName"
+                                        value={editForm.fullName}
+                                        onChange={(e) => setEditForm({...editForm, fullName: e.target.value})}
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label htmlFor="email">Email</Label>
+                                      <Input
+                                        id="email"
+                                        type="email"
+                                        value={editForm.email}
+                                        onChange={(e) => setEditForm({...editForm, email: e.target.value})}
+                                      />
+                                    </div>
+                                    <div>
+                                      <Label htmlFor="phone">Phone</Label>
+                                      <Input
+                                        id="phone"
+                                        value={editForm.phone}
+                                        onChange={(e) => setEditForm({...editForm, phone: e.target.value})}
+                                      />
+                                    </div>
+                                    <div className="flex justify-end gap-2">
+                                      <Button variant="outline" onClick={() => setEditingUser(null)}>Cancel</Button>
+                                      <Button onClick={handleEditUser}>Save Changes</Button>
+                                    </div>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                              
+                              {user.status === 'blocked' ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleUnblockUser(user._id)}
+                                  className="flex items-center gap-1 text-green-600 hover:text-green-700"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                  <span className="hidden md:inline">Unblock</span>
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleBlockUser(user._id)}
+                                  className="flex items-center gap-1 text-red-600 hover:text-red-700"
+                                >
+                                  <Ban className="w-4 h-4" />
+                                  <span className="hidden md:inline">Block</span>
+                                </Button>
+                              )}
+                              
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeleteUser(user._id)}
+                                className="flex items-center gap-1 text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                <span className="hidden md:inline">Delete</span>
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Pagination */}
+                <div className="flex items-center justify-between mt-6">
+                  <div className="text-sm text-gray-600">
+                    Showing {(pagination.currentPage - 1) * 10 + 1} to {Math.min(pagination.currentPage * 10, pagination.totalUsers)} of {pagination.totalUsers} users
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.currentPage - 1)}
+                      disabled={!pagination.hasPrev}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Previous
+                    </Button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                        // Calculate page numbers to show
+                        let startPage = Math.max(1, pagination.currentPage - 2)
+                        let endPage = Math.min(pagination.totalPages, startPage + 4)
+                        
+                        if (endPage - startPage < 4) {
+                          startPage = Math.max(1, endPage - 4)
+                        }
+                        
+                        const page = startPage + i
+                        if (page > endPage) return null
+                        
+                        return (
                           <Button
-                            variant="outline"
+                            key={page}
+                            variant={page === pagination.currentPage ? "default" : "outline"}
                             size="sm"
-                            onClick={() => setSelectedUser(user)}
-                            className="flex items-center gap-1"
+                            onClick={() => handlePageChange(page)}
                           >
-                            <Eye className="w-4 h-4" />
-                            View Profile
+                            {page}
                           </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                        )
+                      })}
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(pagination.currentPage + 1)}
+                      disabled={!pagination.hasNext}
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  </div>
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

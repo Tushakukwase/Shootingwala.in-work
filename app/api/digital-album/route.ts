@@ -13,14 +13,22 @@ export async function GET() {
       return NextResponse.json({
         imageUrl: null,
         title: '',
-        description: ''
+        description: '',
+        buttonText: 'Know More',
+        buttonAction: 'redirect',
+        redirectUrl: '/digital-albums',
+        isEnabled: true
       })
     }
     
     return NextResponse.json({
       imageUrl: albumData.imageUrl || null,
       title: albumData.title || '',
-      description: albumData.description || ''
+      description: albumData.description || '',
+      buttonText: albumData.buttonText || 'Know More',
+      buttonAction: albumData.buttonAction || 'redirect',
+      redirectUrl: albumData.redirectUrl || '/digital-albums',
+      isEnabled: albumData.isEnabled !== undefined ? albumData.isEnabled : true
     })
   } catch (error) {
     console.error('Failed to fetch album data:', error)
@@ -44,6 +52,10 @@ export async function POST(request: NextRequest) {
       imageUrl: body.imageUrl || null,
       title: body.title || '',
       description: body.description || '',
+      buttonText: body.buttonText || 'Know More',
+      buttonAction: body.buttonAction || 'redirect',
+      redirectUrl: body.redirectUrl || '/digital-albums',
+      isEnabled: body.isEnabled !== undefined ? body.isEnabled : true,
       updatedAt: new Date()
     }
     
@@ -60,7 +72,11 @@ export async function POST(request: NextRequest) {
       data: {
         imageUrl: albumData.imageUrl,
         title: albumData.title,
-        description: albumData.description
+        description: albumData.description,
+        buttonText: albumData.buttonText,
+        buttonAction: albumData.buttonAction,
+        redirectUrl: albumData.redirectUrl,
+        isEnabled: albumData.isEnabled
       }
     })
   } catch (error) {
