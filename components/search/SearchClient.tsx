@@ -10,10 +10,12 @@ import { SimplePhotographerFilter } from '@/components/photographer/SimplePhotog
 
 export default function SearchClient() {
   const searchParams = useSearchParams()
-  const categoryFilter = searchParams.get('category') || ''
-  const cityFilter = searchParams.get('city') || ''
-  const priceRangeFilter = searchParams.get('priceRange') || ''
-  const approvedFilter = searchParams.get('approved') || ''
+  const [filters, setFilters] = useState({
+    category: '',
+    city: '',
+    priceRange: '',
+    approved: ''
+  })
   
   const [results, setResults] = useState<any>({
     photographers: [],
@@ -49,9 +51,20 @@ export default function SearchClient() {
     }
   }, []);
 
+  // Update filters when search params change
+  useEffect(() => {
+    setFilters({
+      category: searchParams.get('category') || '',
+      city: searchParams.get('city') || '',
+      priceRange: searchParams.get('priceRange') || '',
+      approved: searchParams.get('approved') || ''
+    })
+  }, [searchParams])
+
+  // Fetch results when filters change
   useEffect(() => {
     fetchSearchResults()
-  }, [categoryFilter, cityFilter, priceRangeFilter, approvedFilter])
+  }, [filters])
 
   const fetchSearchResults = async () => {
     setResults({ ...results, loading: true })
@@ -61,24 +74,24 @@ export default function SearchClient() {
       
       // Build query parameters
       const params = new URLSearchParams()
-      if (categoryFilter) {
-        params.append('category', categoryFilter)
+      if (filters.category) {
+        params.append('category', filters.category)
       }
-      if (cityFilter) {
-        params.append('city', cityFilter)
+      if (filters.city) {
+        params.append('city', filters.city)
       }
-      if (priceRangeFilter) {
-        params.append('priceRange', priceRangeFilter)
+      if (filters.priceRange) {
+        params.append('priceRange', filters.priceRange)
       }
-      if (approvedFilter) {
-        params.append('approved', approvedFilter)
+      if (filters.approved) {
+        params.append('approved', filters.approved)
       } else {
         // Default to approved photographers
         params.append('approved', 'true')
       }
       
       // Fetch photographers based on filters
-      const cacheKey = `photographers-${categoryFilter}-${cityFilter}-${priceRangeFilter}-${approvedFilter}`
+      const cacheKey = `photographers-${filters.category}-${filters.city}-${filters.priceRange}-${filters.approved}`
       const cachedData = ClientCache.get(cacheKey)
       if (cachedData) {
         photographers = cachedData
@@ -114,7 +127,7 @@ export default function SearchClient() {
         {/* Search Header */}
         <div className="mb-8 mt-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            {categoryFilter || cityFilter || priceRangeFilter ? 
+            {filters.category || filters.city || filters.priceRange ? 
              `Photographers` : 
              'All Photographers'}
           </h1>
@@ -123,21 +136,21 @@ export default function SearchClient() {
           </p>
           
           {/* Active Filters */}
-          {(categoryFilter || cityFilter || priceRangeFilter) && (
+          {(filters.category || filters.city || filters.priceRange) && (
             <div className="mt-4 flex flex-wrap gap-2">
-              {categoryFilter && (
+              {filters.category && (
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
-                  Type: {categoryFilter}
+                  Type: {filters.category}
                 </span>
               )}
-              {cityFilter && (
+              {filters.city && (
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
-                  Location: {cityFilter}
+                  Location: {filters.city}
                 </span>
               )}
-              {priceRangeFilter && (
+              {filters.priceRange && (
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">
-                  Price: {priceRangeFilter}
+                  Price: {filters.priceRange}
                 </span>
               )}
             </div>
