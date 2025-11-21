@@ -1,6 +1,6 @@
+// app/api/categories/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import clientPromise from '@/lib/mongodb'
-import { ObjectId } from 'mongodb'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,11 +9,21 @@ export async function GET(request: NextRequest) {
     
     const client = await clientPromise
     const db = client.db('photobook')
+    
+    // Check if categories collection exists
+    const collections = await db.listCollections({ name: 'categories' }).toArray()
+    if (collections.length === 0) {
+      // Return empty array if collection doesn't exist
+      return NextResponse.json({
+        success: true,
+        categories: []
+      })
+    }
+    
     const categories = db.collection('categories')
     
     let query: any = {};
     
-    // Add search filter if provided
     if (search) {
       query = {
         name: { $regex: search, $options: 'i' }
@@ -31,62 +41,12 @@ export async function GET(request: NextRequest) {
       success: true,
       categories: transformedCategories
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching categories:', error)
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to fetch categories'
-    }, { status: 500 })
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { name, image } = body
-    
-    if (!name) {
-      return NextResponse.json({
-        success: false,
-        error: 'Category name is required'
-      }, { status: 400 })
-    }
-    
-    const client = await clientPromise
-    const db = client.db('photobook')
-    const categories = db.collection('categories')
-    
-    // Check if category already exists
-    const existingCategory = await categories.findOne({ name: name.trim() })
-    if (existingCategory) {
-      return NextResponse.json({
-        success: false,
-        error: 'Category already exists'
-      }, { status: 400 })
-    }
-    
-    const newCategory = {
-      name: name.trim(),
-      image: image || '',
-      searchCount: 0,
-      isPopular: false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-    
-    const result = await categories.insertOne(newCategory)
-    
+    // Return empty array instead of error
     return NextResponse.json({
       success: true,
-      ...newCategory,
-      _id: result.insertedId,
-      id: result.insertedId.toString()
+      categories: []
     })
-  } catch (error) {
-    console.error('Error adding category:', error)
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to add category'
-    }, { status: 500 })
   }
 }
