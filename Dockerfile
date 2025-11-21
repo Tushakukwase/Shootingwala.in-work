@@ -3,8 +3,8 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# TLS/SSL support ke liye openssl install karo
-RUN apk add --no-cache openssl
+# Install openssl and ca-certificates for SSL
+RUN apk add --no-cache openssl ca-certificates
 
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
@@ -22,18 +22,20 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 
-# TLS/SSL support ke liye openssl install karo
-RUN apk add --no-cache openssl
+# Install openssl and ca-certificates for SSL support
+RUN apk add --no-cache openssl ca-certificates && \
+    update-ca-certificates
 
 COPY --from=builder /app ./
 
 # Production dependencies
 RUN npm install --production --legacy-peer-deps
 
-# Runtime environment variable for MongoDB
+# Runtime environment variables
 ENV MONGO_URI="mongodb+srv://tusharkukwase24_db_user:S2eP3gx4sIwRpGHq@data.buqlnst.mongodb.net/photobook?retryWrites=true&w=majority&appName=Data"
 ENV ADMIN_EMAIL="tusharkukwase24@gmail.com"
 ENV NODE_ENV="production"
+ENV PORT="10000"
 
-EXPOSE 3000
+EXPOSE 10000
 CMD ["npm", "start"]
