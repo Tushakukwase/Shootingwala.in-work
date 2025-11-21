@@ -1,9 +1,16 @@
-# Shootingwala.in Project Requirements (Documentation Only)
-
-# NOTE: This file is for documentation purposes only.
-# This is a Node.js/Next.js project, NOT a Python project.
-# Do NOT install these requirements with pip.
-# Instead, use npm install to install Node.js dependencies.
+# SHOOTINGWALA.IN - PROJECT DEPENDENCIES DOCUMENTATION
+# ===================================================
+#
+# ⚠️  WARNING: THIS IS NOT A PYTHON REQUIREMENTS FILE ⚠️
+# ⚠️  DO NOT RUN: pip install -r requirements.txt     ⚠️
+#
+# This file is for documentation purposes only to list all
+# dependencies used in the Shootingwala.in Next.js project.
+#
+# To install dependencies for this Node.js project, use:
+#   npm install
+#
+# ================================================
 
 ## Core Framework
 - Next.js 15.5.6

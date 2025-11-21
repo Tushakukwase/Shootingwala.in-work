@@ -1,1 +1,3 @@
+# Prevent Render from treating this as a Python project
 requirements.txt
+*.txt
