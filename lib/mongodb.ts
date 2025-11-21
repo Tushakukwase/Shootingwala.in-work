@@ -7,20 +7,23 @@ if (!process.env.MONGO_URI) {
 
 const uri = process.env.MONGO_URI
 
-// Updated MongoDB options for Render compatibility
+// Render-compatible MongoDB options
 const options = {
   maxPoolSize: 10,
   minPoolSize: 5,
-  serverSelectionTimeoutMS: 10000,
+  serverSelectionTimeoutMS: 30000,
   socketTimeoutMS: 45000,
-  // Critical: Remove TLS options that cause issues on Render
-  // Let MongoDB driver handle TLS automatically
+  // SSL/TLS configuration for Render
+  ssl: true,
+  tlsAllowInvalidCertificates: false,
+  // Use new URL parser and unified topology (deprecated but sometimes needed)
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
 }
 
 let client: MongoClient
 let clientPromise: Promise<MongoClient>
 
-// Simple connection without complex error handling during build
 if (process.env.NODE_ENV === 'development') {
   let globalWithMongo = global as typeof globalThis & {
     _mongoClientPromise?: Promise<MongoClient>
@@ -36,5 +39,10 @@ if (process.env.NODE_ENV === 'development') {
   client = new MongoClient(uri, options)
   clientPromise = client.connect()
 }
+
+// Add error handling for the connection
+clientPromise.catch((error) => {
+  console.error('Failed to connect to MongoDB:', error)
+})
 
 export default clientPromise
